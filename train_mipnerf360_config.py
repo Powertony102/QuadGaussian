@@ -101,7 +101,7 @@ def run_training(scene_name, args):
     cmd = [
         "python", "train.py",
         "-s", data_path,
-        "-i", "images_2", 
+        "-i", "images", 
         "-m", output_path,
         "--eval",
         "--disable_viewer",

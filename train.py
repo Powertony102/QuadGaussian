@@ -22,6 +22,11 @@ from utils.image_utils import psnr
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, PipelineParams, OptimizationParams
 try:
+    from lpipsPyTorch import lpips
+    LPIPS_AVAILABLE = True
+except ImportError:
+    LPIPS_AVAILABLE = False
+try:
     from torch.utils.tensorboard import SummaryWriter
     TENSORBOARD_FOUND = True
 except ImportError:
@@ -74,7 +79,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     viewpoint_stack = scene.getTrainCameras().copy()
     viewpoint_indices = list(range(len(viewpoint_stack)))
     ema_loss_for_log = 0.0
-    ema_Ll1depth_for_log = 0.0
 
     progress_bar = tqdm(
         range(first_iter, opt.iterations),
@@ -183,22 +187,26 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         with torch.no_grad():
             # Progress bar
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
-            ema_Ll1depth_for_log = 0.4 * Ll1depth + 0.6 * ema_Ll1depth_for_log
-
-            if iteration % 10 == 0:
-                progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}", "Depth Loss": f"{ema_Ll1depth_for_log:.{7}f}"})
-                progress_bar.update(10)
-                # wandb日志
-                if WANDB_FOUND and wandb.run is not None:
-                    wandb_log_dict = {
-                        'train/ema_loss': ema_loss_for_log,
-                        'train/ema_depth_loss': ema_Ll1depth_for_log,
-                        'train/n_gaussians': gaussians.get_xyz.shape[0],
-                        'iteration': iteration
-                    }
-                    if kernel_time is not None:
-                        wandb_log_dict['train/kernel_time'] = kernel_time
-                    wandb.log(wandb_log_dict)
+            
+            # 更新进度条显示
+            progress_bar.set_postfix({
+                "Iter": iteration,
+                "Loss": f"{ema_loss_for_log:.6f}",
+                "N_GS": gaussians.get_xyz.shape[0]
+            })
+            progress_bar.update(10)
+            
+            # wandb日志（每10次迭代记录一次）
+            if iteration % 10 == 0 and WANDB_FOUND and wandb.run is not None:
+                wandb_log_dict = {
+                    'train/ema_loss': ema_loss_for_log,
+                    'train/n_gaussians': gaussians.get_xyz.shape[0],
+                    'iteration': iteration
+                }
+                if kernel_time is not None:
+                    wandb_log_dict['train/kernel_time'] = kernel_time
+                wandb.log(wandb_log_dict)
+            
             if iteration == opt.iterations:
                 progress_bar.close()
 
@@ -304,12 +312,26 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
         validation_configs = ({'name': 'test', 'cameras' : scene.getTestCameras()}, 
                               {'name': 'train', 'cameras' : [scene.getTrainCameras()[idx % len(scene.getTrainCameras())] for idx in range(5, 30, 5)]})
 
+
+        total_render_time = 0.0
+        total_frames = 0
         for config in validation_configs:
             if config['cameras'] and len(config['cameras']) > 0:
                 l1_test = 0.0
                 psnr_test = 0.0
+                ssim_test = 0.0
+                lpips_test = 0.0
                 for idx, viewpoint in enumerate(config['cameras']):
+                    render_start = torch.cuda.Event(enable_timing = True)
+                    render_end = torch.cuda.Event(enable_timing = True)
+                    render_start.record()
                     image = torch.clamp(renderFunc(viewpoint, scene.gaussians, *renderArgs)["render"], 0.0, 1.0)
+                    render_end.record()
+                    torch.cuda.synchronize()
+                    render_time = render_start.elapsed_time(render_end)  # 单位：毫秒
+                    total_render_time += render_time / 1000.0  # 转换为秒
+                    total_frames += 1
+
                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
                     if train_test_exp:
                         image = image[..., image.shape[-1] // 2:]
@@ -318,21 +340,71 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                         tb_writer.add_images(config['name'] + "_view_{}/render".format(viewpoint.image_name), image[None], global_step=iteration)
                         if iteration == testing_iterations[0]:
                             tb_writer.add_images(config['name'] + "_view_{}/ground_truth".format(viewpoint.image_name), gt_image[None], global_step=iteration)
+                    
+                    # 计算各种指标
                     l1_test += l1_loss(image, gt_image).mean().double()
                     psnr_test += psnr(image, gt_image).mean().double()
+                    
+                    # 计算SSIM
+                    if FUSED_SSIM_AVAILABLE:
+                        ssim_value = fused_ssim(image.unsqueeze(0), gt_image.unsqueeze(0))
+                    else:
+                        ssim_value = ssim(image, gt_image)
+                    ssim_test += ssim_value.double()
+                    
+                    # 计算LPIPS
+                    if LPIPS_AVAILABLE:
+                        lpips_value = lpips(image.unsqueeze(0), gt_image.unsqueeze(0), net_type='vgg')
+                        lpips_test += lpips_value.double()
+                
+                # 计算平均值
                 psnr_test /= len(config['cameras'])
-                l1_test /= len(config['cameras'])          
-                print("\n[ITER {}] Evaluating {}: L1 {} PSNR {}".format(iteration, config['name'], l1_test, psnr_test))
+                l1_test /= len(config['cameras'])
+                ssim_test /= len(config['cameras'])
+                if LPIPS_AVAILABLE:
+                    lpips_test /= len(config['cameras'])
+                
+                # 打印结果
+                if LPIPS_AVAILABLE:
+                    print("\n[ITER {}] Evaluating {}: L1 {:.6f} PSNR {:.6f} SSIM {:.6f} LPIPS {:.6f}".format(
+                        iteration, config['name'], l1_test, psnr_test, ssim_test, lpips_test))
+                else:
+                    print("\n[ITER {}] Evaluating {}: L1 {:.6f} PSNR {:.6f} SSIM {:.6f}".format(
+                        iteration, config['name'], l1_test, psnr_test, ssim_test))
+                
+                # TensorBoard日志
                 if tb_writer:
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - l1_loss', l1_test, iteration)
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - psnr', psnr_test, iteration)
-                # wandb日志
+                    tb_writer.add_scalar(config['name'] + '/loss_viewpoint - ssim', ssim_test, iteration)
+                    if LPIPS_AVAILABLE:
+                        tb_writer.add_scalar(config['name'] + '/loss_viewpoint - lpips', lpips_test, iteration)
+                
+                # WandB日志
                 if WANDB_FOUND and wandb.run is not None:
-                    wandb.log({
+                    wandb_log_dict = {
                         f'{config["name"]}/loss_viewpoint - l1_loss': l1_test,
                         f'{config["name"]}/loss_viewpoint - psnr': psnr_test,
+                        f'{config["name"]}/loss_viewpoint - ssim': ssim_test,
                         'iteration': iteration
-                    })
+                    }
+                    if LPIPS_AVAILABLE:
+                        wandb_log_dict[f'{config["name"]}/loss_viewpoint - lpips'] = lpips_test
+                    wandb.log(wandb_log_dict)
+        # 计算平均FPS
+        if total_frames > 0:
+            mean_fps = total_frames / total_render_time
+            print(f"[ITER {iteration}] Average FPS: {mean_fps:.2f} (Total frames: {total_frames}, Total time: {total_render_time:.3f}s)")
+            if tb_writer:
+                tb_writer.add_scalar('evaluation/mean_fps', mean_fps, iteration)
+            if WANDB_FOUND and wandb.run is not None:
+                wandb.log({
+                    'evaluation/mean_fps': mean_fps,
+                    'evaluation/total_frames': total_frames,
+                    'evaluation/total_render_time': total_render_time,
+                    'iteration': iteration
+                })
+        
         if tb_writer:
             tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
             tb_writer.add_scalar('total_points', scene.gaussians.get_xyz.shape[0], iteration)
