@@ -345,10 +345,10 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                 # 打印结果
                 if LPIPS_AVAILABLE:
                     print("\n[ITER {}] Evaluating {}: L1 {:.6f} PSNR {:.6f} SSIM {:.6f} LPIPS {:.6f}".format(
-                        iteration, config['name'], l1_test, psnr_test, ssim_test, lpips_test))
+                        iteration, config['name'], l1_test.item(), psnr_test.item(), ssim_test.item(), lpips_test.item()))
                 else:
                     print("\n[ITER {}] Evaluating {}: L1 {:.6f} PSNR {:.6f} SSIM {:.6f}".format(
-                        iteration, config['name'], l1_test, psnr_test, ssim_test))
+                        iteration, config['name'], l1_test.item(), psnr_test.item(), ssim_test.item()))
                 
                 # TensorBoard日志
                 if tb_writer:
@@ -361,13 +361,13 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                 # WandB日志
                 if WANDB_FOUND and wandb.run is not None:
                     wandb_log_dict = {
-                        f'{config["name"]}/loss_viewpoint - l1_loss': l1_test,
-                        f'{config["name"]}/loss_viewpoint - psnr': psnr_test,
-                        f'{config["name"]}/loss_viewpoint - ssim': ssim_test,
+                        f'{config["name"]}/loss_viewpoint - l1_loss': l1_test.item(),
+                        f'{config["name"]}/loss_viewpoint - psnr': psnr_test.item(),
+                        f'{config["name"]}/loss_viewpoint - ssim': ssim_test.item(),
                         'iteration': iteration
                     }
                     if LPIPS_AVAILABLE:
-                        wandb_log_dict[f'{config["name"]}/loss_viewpoint - lpips'] = lpips_test
+                        wandb_log_dict[f'{config["name"]}/loss_viewpoint - lpips'] = lpips_test.item()
                     wandb.log(wandb_log_dict)
         # 计算平均FPS
         if total_frames > 0:
