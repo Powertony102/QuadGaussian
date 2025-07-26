@@ -182,23 +182,20 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
             
             # 更新进度条显示
-            progress_bar.set_postfix({
-                "Iter": iteration,
-                "Loss": f"{ema_loss_for_log:.6f}",
-                "N_GS": gaussians.get_xyz.shape[0]
-            })
-            progress_bar.update(10)
-            
-            # wandb日志（每10次迭代记录一次）
-            if iteration % 10 == 0 and WANDB_FOUND and wandb.run is not None:
-                wandb_log_dict = {
-                    'train/ema_loss': ema_loss_for_log,
-                    'train/n_gaussians': gaussians.get_xyz.shape[0],
-                    'iteration': iteration
-                }
-                if kernel_time is not None:
-                    wandb_log_dict['train/kernel_time'] = kernel_time
-                wandb.log(wandb_log_dict)
+            if iteration % 10 == 0:
+                progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}"})
+                progress_bar.update(10)
+                
+                # wandb日志（每10次迭代记录一次）
+                if WANDB_FOUND and wandb.run is not None:
+                    wandb_log_dict = {
+                        'train/ema_loss': ema_loss_for_log,
+                        'train/n_gaussians': gaussians.get_xyz.shape[0],
+                        'iteration': iteration
+                    }
+                    if kernel_time is not None:
+                        wandb_log_dict['train/kernel_time'] = kernel_time
+                    wandb.log(wandb_log_dict)
             
             if iteration == opt.iterations:
                 progress_bar.close()
