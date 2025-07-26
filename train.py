@@ -80,14 +80,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     viewpoint_indices = list(range(len(viewpoint_stack)))
     ema_loss_for_log = 0.0
 
-    progress_bar = tqdm(
-        range(first_iter, opt.iterations),
-        desc="Training progress",
-        dynamic_ncols=True,
-        leave=True,
-        file=sys.stdout,
-        position=0
-    )
+    progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
     for iteration in range(first_iter, opt.iterations + 1):
         if network_gui.conn == None:
@@ -119,7 +112,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
             viewpoint_indices = list(range(len(viewpoint_stack)))
         rand_idx = randint(0, len(viewpoint_indices) - 1)
         viewpoint_cam = viewpoint_stack.pop(rand_idx)
-        vind = viewpoint_indices.pop(rand_idx)
 
         # Render
         if (iteration - 1) == debug_from:
@@ -228,18 +220,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 
                 if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
                     gaussians.reset_opacity()
-
-            # Optimizer step
-            if iteration < opt.iterations:
-                gaussians.exposure_optimizer.step()
-                gaussians.exposure_optimizer.zero_grad(set_to_none = True)
-                if use_sparse_adam:
-                    visible = radii > 0
-                    gaussians.optimizer.step(visible, radii.shape[0])
-                    gaussians.optimizer.zero_grad(set_to_none = True)
-                else:
-                    gaussians.optimizer.step()
-                    gaussians.optimizer.zero_grad(set_to_none = True)
 
             if (iteration in checkpoint_iterations):
                 print("\n[ITER {}] Saving Checkpoint".format(iteration))
