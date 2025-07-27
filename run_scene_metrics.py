@@ -116,6 +116,8 @@ def main():
     output_path = Path(args.output_path)
     if not output_path.exists():
         print(f"❌ 输出路径不存在: {output_path}")
+        print(f"💡 请先运行训练脚本生成模型，或者指定正确的输出路径")
+        print(f"💡 例如: python run_scene_metrics.py --output_path /path/to/your/models")
         return
     
     # 统计信息
