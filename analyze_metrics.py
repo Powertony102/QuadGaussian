@@ -88,6 +88,18 @@ def calculate_dataset_averages(metrics_data):
             dataset_averages[dataset_name] = averages
             print(f"📊 {dataset_name}: {len(metrics_list)} 个场景")
     
+    # 计算MipNeRF360总体平均值（Indoor + Outdoor）
+    mipnerf360_indoor_metrics = dataset_metrics.get("MipNeRF360-Indoor", [])
+    mipnerf360_outdoor_metrics = dataset_metrics.get("MipNeRF360-Outdoor", [])
+    
+    if mipnerf360_indoor_metrics or mipnerf360_outdoor_metrics:
+        all_mipnerf360_metrics = mipnerf360_indoor_metrics + mipnerf360_outdoor_metrics
+        if all_mipnerf360_metrics:
+            df = pd.DataFrame(all_mipnerf360_metrics)
+            averages = df.mean().to_dict()
+            dataset_averages["MipNeRF360-All"] = averages
+            print(f"📊 MipNeRF360-All: {len(all_mipnerf360_metrics)} 个场景")
+    
     return dataset_averages
 
 def print_results(metrics_data, dataset_averages, output_format="table"):
@@ -104,15 +116,37 @@ def print_results(metrics_data, dataset_averages, output_format="table"):
         print("📈 数据集平均值统计")
         print("="*80)
         
-        # 打印每个数据集的平均值
+        # 定义数据集显示顺序
+        dataset_order = [
+            "MipNeRF360-Outdoor",
+            "MipNeRF360-Indoor", 
+            "MipNeRF360-All",
+            "Tanks&Temples",
+            "DeepBlending"
+        ]
+        
+        # 按顺序打印每个数据集的平均值
+        for dataset_name in dataset_order:
+            if dataset_name in dataset_averages:
+                averages = dataset_averages[dataset_name]
+                print(f"\n🎯 {dataset_name}")
+                print("-" * 50)
+                print(f"L1 Loss:     {averages.get('l1', 'N/A'):.6f}")
+                print(f"PSNR:        {averages.get('psnr', 'N/A'):.2f}")
+                print(f"SSIM:        {averages.get('ssim', 'N/A'):.4f}")
+                print(f"LPIPS:       {averages.get('lpips', 'N/A'):.4f}")
+                print(f"FPS:         {averages.get('fps', 'N/A'):.1f}")
+        
+        # 打印其他可能的数据集
         for dataset_name, averages in dataset_averages.items():
-            print(f"\n🎯 {dataset_name}")
-            print("-" * 50)
-            print(f"L1 Loss:     {averages.get('l1', 'N/A'):.6f}")
-            print(f"PSNR:        {averages.get('psnr', 'N/A'):.2f}")
-            print(f"SSIM:        {averages.get('ssim', 'N/A'):.4f}")
-            print(f"LPIPS:       {averages.get('lpips', 'N/A'):.4f}")
-            print(f"FPS:         {averages.get('fps', 'N/A'):.1f}")
+            if dataset_name not in dataset_order:
+                print(f"\n🎯 {dataset_name}")
+                print("-" * 50)
+                print(f"L1 Loss:     {averages.get('l1', 'N/A'):.6f}")
+                print(f"PSNR:        {averages.get('psnr', 'N/A'):.2f}")
+                print(f"SSIM:        {averages.get('ssim', 'N/A'):.4f}")
+                print(f"LPIPS:       {averages.get('lpips', 'N/A'):.4f}")
+                print(f"FPS:         {averages.get('fps', 'N/A'):.1f}")
         
         # 打印所有场景的详细数据
         print("\n" + "="*80)
@@ -130,8 +164,27 @@ def print_results(metrics_data, dataset_averages, output_format="table"):
         # 保存为CSV文件
         output_file = "dataset_averages.csv"
         
-        # 创建数据集平均值DataFrame
-        avg_df = pd.DataFrame(dataset_averages).T
+        # 创建数据集平均值DataFrame，按指定顺序排列
+        dataset_order = [
+            "MipNeRF360-Outdoor",
+            "MipNeRF360-Indoor", 
+            "MipNeRF360-All",
+            "Tanks&Temples",
+            "DeepBlending"
+        ]
+        
+        # 按顺序创建DataFrame
+        ordered_data = {}
+        for dataset_name in dataset_order:
+            if dataset_name in dataset_averages:
+                ordered_data[dataset_name] = dataset_averages[dataset_name]
+        
+        # 添加其他数据集
+        for dataset_name, data in dataset_averages.items():
+            if dataset_name not in dataset_order:
+                ordered_data[dataset_name] = data
+        
+        avg_df = pd.DataFrame(ordered_data).T
         avg_df.index.name = "Dataset"
         
         # 保存数据集平均值
