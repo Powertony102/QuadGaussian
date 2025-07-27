@@ -14,6 +14,7 @@ import os
 import subprocess
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 # 从 full_eval.py 导入场景定义
 mipnerf360_outdoor_scenes = ["bicycle", "flowers", "garden", "stump", "treehill"]
@@ -31,7 +32,7 @@ def get_all_scenes():
     return all_scenes
 
 def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, skip_test=False, 
-                             kernel_times=False, suffix="", quiet=False):
+                             kernel_times=False, suffix="", quiet=False, verbose=False):
     """
     运行 compute_scene_metrics.py 对指定模型路径计算指标
     
@@ -61,28 +62,28 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
     if quiet:
         cmd.append("--quiet")
     
-    print(f"运行命令: {' '.join(cmd)}")
+    if verbose:
+        print(f"运行命令: {' '.join(cmd)}")
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"✅ 成功处理模型: {model_path}")
-        if result.stdout:
-            print(f"输出: {result.stdout}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ 处理模型失败: {model_path}")
-        print(f"错误: {e.stderr}")
+        if not quiet:
+            print(f"\n❌ 处理模型失败: {model_path}")
+            print(f"错误: {e.stderr}")
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description="运行 compute_scene_metrics.py 测试所有场景")
+    parser = argparse.ArgumentParser(description="运行 compute_scene_metrics.py 测试所有场景的测试集")
     parser.add_argument("--output_path", default="./eval", help="输出路径")
     parser.add_argument("--iteration", type=int, default=30000, help="迭代次数")
-    parser.add_argument("--skip_train", action="store_true", help="跳过训练集")
+    parser.add_argument("--skip_train", action="store_true", default=True, help="跳过训练集（默认启用）")
     parser.add_argument("--skip_test", action="store_true", help="跳过测试集")
     parser.add_argument("--kernel_times", action="store_true", help="计算内核时间")
     parser.add_argument("--suffix", type=str, default="", help="后缀")
     parser.add_argument("--quiet", action="store_true", help="静默模式")
+    parser.add_argument("--verbose", action="store_true", help="显示详细输出")
     parser.add_argument("--scenes", nargs="+", help="指定要处理的场景（可选）")
     parser.add_argument("--scene_types", nargs="+", 
                        choices=["mipnerf360_outdoor", "mipnerf360_indoor", "tanks_and_temples", "deep_blending"],
@@ -106,7 +107,7 @@ def main():
     else:
         target_scenes = get_all_scenes()
     
-    print(f"🎯 将处理以下场景: {target_scenes}")
+    print(f"🎯 将处理以下场景的测试集: {target_scenes}")
     print(f"📁 输出路径: {args.output_path}")
     print(f"🔄 迭代次数: {args.iteration}")
     print(f"⚙️  参数: skip_train={args.skip_train}, skip_test={args.skip_test}, kernel_times={args.kernel_times}")
@@ -124,30 +125,43 @@ def main():
     
     print(f"\n🚀 开始处理 {total_scenes} 个场景...")
     
-    for i, scene in enumerate(target_scenes, 1):
-        model_path = output_path / scene
+    # 创建进度条
+    with tqdm(total=total_scenes, desc="处理场景", unit="场景", 
+              bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as pbar:
         
-        if not model_path.exists():
-            print(f"⚠️  跳过场景 {scene}: 模型路径不存在 {model_path}")
-            failed_scenes.append((scene, "模型路径不存在"))
-            continue
-        
-        print(f"\n📊 [{i}/{total_scenes}] 处理场景: {scene}")
-        
-        success = run_compute_scene_metrics(
-            str(model_path),
-            iteration=args.iteration,
-            skip_train=args.skip_train,
-            skip_test=args.skip_test,
-            kernel_times=args.kernel_times,
-            suffix=args.suffix,
-            quiet=args.quiet
-        )
-        
-        if success:
-            successful_scenes += 1
-        else:
-            failed_scenes.append((scene, "处理失败"))
+        for scene in target_scenes:
+            model_path = output_path / scene
+            
+            if not model_path.exists():
+                pbar.set_postfix_str(f"跳过 {scene}: 路径不存在", refresh=True)
+                failed_scenes.append((scene, "模型路径不存在"))
+                pbar.update(1)
+                continue
+            
+            pbar.set_postfix_str(f"处理 {scene}", refresh=True)
+            
+            success = run_compute_scene_metrics(
+                str(model_path),
+                iteration=args.iteration,
+                skip_train=args.skip_train,
+                skip_test=args.skip_test,
+                kernel_times=args.kernel_times,
+                suffix=args.suffix,
+                quiet=args.quiet or not args.verbose,
+                verbose=args.verbose
+            )
+            
+            if success:
+                successful_scenes += 1
+                pbar.set_postfix_str(f"✅ {scene} 完成", refresh=True)
+            else:
+                failed_scenes.append((scene, "处理失败"))
+                pbar.set_postfix_str(f"❌ {scene} 失败", refresh=True)
+            
+            pbar.update(1)
+    
+    # 最终进度条更新
+    pbar.set_postfix_str(f"完成! 成功: {successful_scenes}/{total_scenes}", refresh=True)
     
     # 输出统计结果
     print(f"\n📈 处理完成!")
