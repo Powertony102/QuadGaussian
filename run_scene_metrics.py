@@ -32,7 +32,7 @@ def get_all_scenes():
     return all_scenes
 
 def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, skip_test=False, 
-                             kernel_times=False, suffix="", quiet=False, verbose=False):
+                             kernel_times=False, suffix="", quiet=False, verbose=False, pbar=None):
     """
     运行 compute_scene_metrics.py 对指定模型路径计算指标
     
@@ -66,17 +66,52 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
         print(f"运行命令: {' '.join(cmd)}")
     
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return True
+        if verbose and pbar:
+            # 详细模式：实时显示输出并更新进度条
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                     text=True, bufsize=1, universal_newlines=True)
+            
+            # 实时读取输出并更新进度条
+            for line in iter(process.stdout.readline, ''):
+                line = line.strip()
+                if line:
+                    # 解析输出中的进度信息
+                    if "Progress" in line:
+                        pbar.set_postfix_str(f"进度: {line}", refresh=True)
+                    elif "Evaluation" in line:
+                        pbar.set_postfix_str(f"评估: {line}", refresh=True)
+                    elif "L1" in line and "PSNR" in line:
+                        pbar.set_postfix_str(f"完成: {line}", refresh=True)
+                    elif "Rendering" in line:
+                        pbar.set_postfix_str(f"渲染: {line}", refresh=True)
+                    elif "Image Metric Progress" in line:
+                        pbar.set_postfix_str(f"图像指标计算: {line}", refresh=True)
+                    elif "Kernel Time Progress" in line:
+                        pbar.set_postfix_str(f"内核时间计算: {line}", refresh=True)
+                    elif "Processing" in line:
+                        pbar.set_postfix_str(f"处理中: {line}", refresh=True)
+                    
+                    if verbose:
+                        print(f"  {line}")
+            
+            process.wait()
+            return process.returncode == 0
+        else:
+            # 静默模式：只捕获输出
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return True
     except subprocess.CalledProcessError as e:
         if not quiet:
             print(f"\n❌ 处理模型失败: {model_path}")
-            print(f"错误: {e.stderr}")
+            if hasattr(e, 'stderr') and e.stderr:
+                print(f"错误: {e.stderr}")
+            else:
+                print(f"命令执行失败: {' '.join(cmd)}")
         return False
 
 def main():
     parser = argparse.ArgumentParser(description="运行 compute_scene_metrics.py 测试所有场景的测试集")
-    parser.add_argument("--output_path", default="./eval", help="输出路径")
+    parser.add_argument("--output_path", default="eval", help="输出路径")
     parser.add_argument("--iteration", type=int, default=30000, help="迭代次数")
     parser.add_argument("--skip_train", action="store_true", default=True, help="跳过训练集（默认启用）")
     parser.add_argument("--skip_test", action="store_true", help="跳过测试集")
@@ -84,6 +119,7 @@ def main():
     parser.add_argument("--suffix", type=str, default="", help="后缀")
     parser.add_argument("--quiet", action="store_true", help="静默模式")
     parser.add_argument("--verbose", action="store_true", help="显示详细输出")
+    parser.add_argument("--show_progress", action="store_true", help="显示实时进度信息")
     parser.add_argument("--scenes", nargs="+", help="指定要处理的场景（可选）")
     parser.add_argument("--scene_types", nargs="+", 
                        choices=["mipnerf360_outdoor", "mipnerf360_indoor", "tanks_and_temples", "deep_blending"],
@@ -129,7 +165,7 @@ def main():
     
     # 创建进度条
     with tqdm(total=total_scenes, desc="处理场景", unit="场景", 
-              bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as pbar:
+              bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}] {postfix}") as pbar:
         
         for scene in target_scenes:
             model_path = output_path / scene
@@ -150,7 +186,8 @@ def main():
                 kernel_times=args.kernel_times,
                 suffix=args.suffix,
                 quiet=args.quiet or not args.verbose,
-                verbose=args.verbose
+                verbose=args.verbose or args.show_progress,
+                pbar=pbar if args.show_progress else None
             )
             
             if success:
