@@ -32,7 +32,7 @@ parser.add_argument("--output_path", default="./eval")
 
 # 添加 wandb 参数
 parser.add_argument("--use_wandb", action="store_true", default=True, help="启用wandb日志")
-parser.add_argument("--wandb_project", type=str, default="speedy-splat-full-eval", help="wandb项目名")
+parser.add_argument("--wandb_project", type=str, default="QuadGaussian-Full", help="wandb项目名")
 parser.add_argument("--wandb_name", type=str, default=None, help="wandb运行名（可选）")
 
 args, _ = parser.parse_known_args()
