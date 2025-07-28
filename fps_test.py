@@ -144,7 +144,7 @@ def init_scene(model_path: str, iteration: int = -1):
     # 延迟导入，避免循环依赖
     from arguments import ModelParams, PipelineParams
     from gaussian_renderer import GaussianModel
-    from scene import Scene
+    from utils.system_utils import searchForMaxIteration
     
     # 创建参数解析器
     parser = argparse.ArgumentParser(description="FPS Test")
@@ -171,11 +171,26 @@ def init_scene(model_path: str, iteration: int = -1):
     # 初始化高斯模型
     gaussians = GaussianModel(model.sh_degree)
     
-    # 加载场景
-    scene = Scene(model, gaussians, load_iteration=iteration, shuffle=False)
+    # 直接加载已训练的模型，跳过场景数据加载
+    if iteration == -1:
+        loaded_iter = searchForMaxIteration(os.path.join(model_path, "point_cloud"))
+    else:
+        loaded_iter = iteration
+    
+    if loaded_iter is None:
+        raise ValueError(f"在 {model_path}/point_cloud 中找不到训练好的模型")
+    
+    print(f"加载训练好的模型，迭代次数: {loaded_iter}")
+    
+    # 加载PLY文件
+    ply_path = os.path.join(model_path, "point_cloud", f"iteration_{loaded_iter}", "point_cloud.ply")
+    if not os.path.exists(ply_path):
+        raise FileNotFoundError(f"找不到模型文件: {ply_path}")
+    
+    gaussians.load_ply(ply_path, model.train_test_exp)
     
     print(f"场景初始化完成，模型路径: {model_path}")
-    print(f"加载迭代次数: {scene.loaded_iter}")
+    print(f"加载迭代次数: {loaded_iter}")
     
     return gaussians, pipeline
 

@@ -14,9 +14,11 @@
 
 ```
 ├── fps_test.py              # 主测试工具
-├── test_fps_simple.py       # 简化测试脚本（快速验证）
+├── test_fps_quick.py        # 快速测试脚本（验证功能）
+├── test_fps_simple.py       # 简化测试脚本
+├── fps_test_config.py       # 配置文件
 ├── FPS_TEST_README.md       # 使用说明
-└── viewer/images/
+└── viewer/data/
     ├── TEST.lookat          # 相机轨迹文件
     └── TEST.out             # Bundle文件（可选）
 ```
@@ -34,13 +36,19 @@ pip install torch torchvision numpy pillow opencv-python tqdm
 ### 1. 基本用法
 
 ```bash
+# 首先检查模型路径是否正确
+python check_model.py [model_path]
+
 # 使用默认参数运行完整测试
 python fps_test.py
 
 # 指定模型路径
 python fps_test.py --model /path/to/your/model
 
-# 快速测试（只测试前10个视角）
+# 快速测试（只测试前3个视角，每视角10帧）
+python test_fps_quick.py
+
+# 使用简化测试脚本
 python test_fps_simple.py
 ```
 
@@ -50,8 +58,8 @@ python test_fps_simple.py
 python fps_test.py [选项]
 
 选项:
-  --lookat PATH          相机轨迹文件路径 (默认: viewer/images/TEST.lookat)
-  --model PATH           模型路径 (默认: output)
+  --lookat PATH          相机轨迹文件路径 (默认: viewer/data/TEST.lookat)
+  --model PATH           模型路径 (默认: eval/flowers)
   --frames N             每个视角渲染的帧数 (默认: 100)
   --output PATH          输出CSV文件路径 (默认: fps_report.csv)
   --width N              渲染宽度 (默认: 800)
@@ -166,6 +174,25 @@ view_id,fps
    场景初始化失败: [Errno 2] No such file or directory: 'output'
    ```
    解决：确保模型路径正确，包含训练好的模型文件
+   
+   **正确的模型路径结构：**
+   ```
+   your_model_path/
+   ├── point_cloud/
+   │   └── iteration_30000/
+   │       └── point_cloud.ply
+   ├── cameras.json
+   └── input.ply
+   ```
+   
+   **示例：**
+   ```bash
+   # 如果您的模型在 eval/flowers 目录
+   python fps_test.py --model eval/flowers
+   
+   # 如果您的模型在其他位置
+   python fps_test.py --model /path/to/your/trained/model
+   ```
 
 2. **CUDA内存不足**
    ```
