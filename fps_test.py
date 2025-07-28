@@ -142,19 +142,19 @@ def init_scene(model_path: str, iteration: int = -1):
         (gaussian_model, pipeline_params)
     """
     # 延迟导入，避免循环依赖
-    from arguments import ModelParams, PipelineParams
+    from arguments import ModelParams, PipelineParams, get_combined_args
     from gaussian_renderer import GaussianModel
-    from utils.system_utils import searchForMaxIteration
+    from scene import Scene
     
     # 创建参数解析器
     parser = argparse.ArgumentParser(description="FPS Test")
     model_params = ModelParams(parser, sentinel=True)
     pipeline_params = PipelineParams(parser)
+    parser.add_argument("--iteration", default=iteration, type=int)
     
     # 设置默认参数
     args = parser.parse_args([])
     args.model_path = model_path
-    args.iteration = iteration
     args.source_path = model_path
     args.images = "images"
     args.depths = ""
@@ -172,35 +172,11 @@ def init_scene(model_path: str, iteration: int = -1):
     # 初始化高斯模型
     gaussians = GaussianModel(model.sh_degree)
     
-    # 直接加载已训练的模型，跳过场景数据加载
-    if iteration == -1:
-        loaded_iter = searchForMaxIteration(os.path.join(model_path, "point_cloud"))
-    else:
-        loaded_iter = iteration
-    
-    if loaded_iter is None:
-        raise ValueError(f"在 {model_path}/point_cloud 中找不到训练好的模型")
-    
-    print(f"加载训练好的模型，迭代次数: {loaded_iter}")
-    
-    # 加载PLY文件
-    ply_path = os.path.join(model_path, "point_cloud", f"iteration_{loaded_iter}", "point_cloud.ply")
-    if not os.path.exists(ply_path):
-        raise FileNotFoundError(f"找不到模型文件: {ply_path}")
-    
-    # 确保train_test_exp是布尔值
-    use_train_test_exp = bool(model.train_test_exp) if model.train_test_exp is not None else False
-    gaussians.load_ply(ply_path, use_train_test_exp)
-    
-    # 初始化必要的属性，避免在渲染时出错
-    if not hasattr(gaussians, 'exposure_mapping') or gaussians.exposure_mapping is None:
-        gaussians.exposure_mapping = {}
-    if not hasattr(gaussians, '_exposure') or gaussians._exposure is None:
-        # 创建一个默认的exposure矩阵
-        gaussians._exposure = torch.eye(3, 4, device="cuda")[None]
+    # 创建场景对象，它会自动加载模型
+    scene = Scene(model, gaussians, load_iteration=iteration, shuffle=False)
     
     print(f"场景初始化完成，模型路径: {model_path}")
-    print(f"加载迭代次数: {loaded_iter}")
+    print(f"加载迭代次数: {scene.loaded_iter}")
     
     return gaussians, pipeline
 
