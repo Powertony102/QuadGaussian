@@ -69,6 +69,9 @@ python fps_test.py [选项]
   --height N             渲染高度 (默认: 600)
   --background R G B     背景颜色 (默认: 0 0 0)
   --max-views N          最大测试视角数（用于快速测试）
+  --save-images          保存渲染图片
+  --image-interval N     图片保存间隔（每隔多少个视角保存一次，默认: 10）
+  --output-dir PATH      输出目录，默认使用viewer/{model_name}
 ```
 
 ### 3. 示例用法
@@ -85,6 +88,12 @@ python fps_test.py --max-views 20 --frames 50
 
 # 自定义输出文件
 python fps_test.py --output my_fps_results.csv
+
+# 保存渲染图片（每隔10个视角保存一次）
+python fps_test.py --save-images --image-interval 10
+
+# 完整示例：保存图片并生成可视化
+python fps_test.py --model eval/flowers --save-images --image-interval 5 --max-views 20
 ```
 
 ## 输入文件格式
@@ -111,12 +120,27 @@ Cam000 -D origin=0.10681,1.94477,5.25577 -D target=0.164741,1.72807,4.28125 -D u
 
 ## 输出结果
 
+### 输出文件结构
+
+当启用图片保存功能时，会在 `viewer/{model_name}` 目录下生成以下文件：
+
+```
+viewer/{model_name}/
+├── fps_report.csv          # FPS测试结果CSV文件
+├── fps_plot.png           # FPS变化图表
+└── rendered_images/       # 渲染图片目录
+    ├── view_000.png
+    ├── view_010.png
+    ├── view_020.png
+    └── ...
+```
+
 ### 控制台输出
 
 ```
 开始3DGS FPS测试
-相机轨迹文件: viewer/images/TEST.lookat
-模型路径: output
+相机轨迹文件: viewer/data/TEST.lookat
+模型路径: eval/flowers
 渲染分辨率: 800x600
 每视角渲染帧数: 100
 

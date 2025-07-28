@@ -14,6 +14,8 @@ import numpy as np
 import torch
 from typing import List, Dict, Optional
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import torchvision
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -208,7 +210,8 @@ def init_scene(model_path: str, iteration: int = -1):
 
 
 def render_and_time(camera, gaussians, pipeline, 
-                   n_frames: int = 100, background_color: List[float] = [0, 0, 0]) -> float:
+                   n_frames: int = 100, background_color: List[float] = [0, 0, 0],
+                   save_image: bool = False, save_path: str = None) -> float:
     """
     渲染并计时
     
@@ -218,6 +221,8 @@ def render_and_time(camera, gaussians, pipeline,
         pipeline: 渲染管线参数
         n_frames: 渲染帧数
         background_color: 背景颜色
+        save_image: 是否保存渲染图片
+        save_path: 图片保存路径
         
     Returns:
         FPS值
@@ -257,22 +262,32 @@ def render_and_time(camera, gaussians, pipeline,
     elapsed_time = end_time - start_time
     fps = n_frames / elapsed_time
     
+    # 保存渲染图片
+    if save_image and save_path:
+        with torch.no_grad():
+            rendered_image = render(camera, gaussians, pipeline, background)["render"]
+            # 确保图片在正确的范围内
+            rendered_image = torch.clamp(rendered_image, 0.0, 1.0)
+            torchvision.utils.save_image(rendered_image, save_path)
+    
     return fps
 
 
-def report_results(results: List[tuple], output_csv: Optional[str] = None):
+def report_results(results: List[tuple], output_csv: Optional[str] = None, plot_path: Optional[str] = None):
     """
     报告测试结果
     
     Args:
         results: 结果列表，每个元素为(view_id, fps)
         output_csv: 可选的CSV输出文件路径
+        plot_path: 可选的图表保存路径
     """
     if not results:
         print("没有测试结果")
         return
     
     fps_values = [r[1] for r in results]
+    view_ids = [r[0] for r in results]
     
     print("\n" + "="*50)
     print("FPS测试结果")
@@ -295,6 +310,28 @@ def report_results(results: List[tuple], output_csv: Optional[str] = None):
             writer.writerow(["view_id", "fps"])
             writer.writerows(results)
         print(f"结果已保存到: {output_csv}")
+    
+    # 生成FPS变化图表
+    if plot_path:
+        plt.figure(figsize=(12, 6))
+        plt.plot(view_ids, fps_values, 'b-o', linewidth=2, markersize=6, label='FPS')
+        plt.axhline(y=np.mean(fps_values), color='r', linestyle='--', alpha=0.7, label=f'平均FPS: {np.mean(fps_values):.2f}')
+        
+        plt.xlabel('视角ID', fontsize=12)
+        plt.ylabel('FPS', fontsize=12)
+        plt.title('3DGS渲染FPS变化图', fontsize=14, fontweight='bold')
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        
+        # 添加统计信息
+        plt.text(0.02, 0.98, f'平均FPS: {np.mean(fps_values):.2f}\n最小FPS: {np.min(fps_values):.2f}\n最大FPS: {np.max(fps_values):.2f}\n标准差: {np.std(fps_values):.2f}', 
+                transform=plt.gca().transAxes, verticalalignment='top', 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"FPS图表已保存到: {plot_path}")
 
 
 def test_fps_from_lookat(
@@ -305,7 +342,10 @@ def test_fps_from_lookat(
     width: int = 800,
     height: int = 600,
     background_color: List[float] = [0, 0, 0],
-    max_views: Optional[int] = None
+    max_views: Optional[int] = None,
+    save_images: bool = False,
+    image_save_interval: int = 10,
+    output_dir: str = None
 ):
     """
     主测试函数
@@ -319,12 +359,31 @@ def test_fps_from_lookat(
         height: 渲染高度
         background_color: 背景颜色
         max_views: 最大测试视角数（用于快速测试）
+        save_images: 是否保存渲染图片
+        image_save_interval: 图片保存间隔（每隔多少个视角保存一次）
+        output_dir: 输出目录，如果为None则使用viewer/{model_name}
     """
     print("开始3DGS FPS测试")
     print(f"相机轨迹文件: {lookat_path}")
     print(f"模型路径: {model_path}")
     print(f"渲染分辨率: {width}x{height}")
     print(f"每视角渲染帧数: {n_frames}")
+    
+    # 设置输出目录
+    if output_dir is None:
+        model_name = os.path.basename(model_path)
+        output_dir = os.path.join("viewer", model_name)
+    
+    # 创建输出目录
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"输出目录: {output_dir}")
+    
+    # 如果启用图片保存，创建图片目录
+    images_dir = None
+    if save_images:
+        images_dir = os.path.join(output_dir, "rendered_images")
+        os.makedirs(images_dir, exist_ok=True)
+        print(f"图片保存间隔: 每{image_save_interval}个视角")
     
     # 1. 解析相机列表
     print("\n1. 解析相机轨迹文件...")
@@ -353,12 +412,21 @@ def test_fps_from_lookat(
             # 创建相机
             camera = create_camera_from_lookat(view_params, width, height)
             
+            # 决定是否保存图片
+            save_image = save_images and (idx % image_save_interval == 0)
+            save_path = None
+            if save_image:
+                save_path = os.path.join(images_dir, f"view_{idx:03d}.png")
+            
             # 渲染并计时
-            fps = render_and_time(camera, gaussians, pipeline, n_frames, background_color)
+            fps = render_and_time(camera, gaussians, pipeline, n_frames, background_color, save_image, save_path)
             results.append((idx, fps))
             
             # 更新进度条描述，显示当前FPS
-            tqdm.write(f"View {idx:03d}: {fps:.2f} FPS")
+            status_msg = f"View {idx:03d}: {fps:.2f} FPS"
+            if save_image:
+                status_msg += f" [已保存图片]"
+            tqdm.write(status_msg)
             
         except Exception as e:
             tqdm.write(f"View {idx:03d}: 渲染失败 - {e}")
@@ -366,7 +434,12 @@ def test_fps_from_lookat(
     
     # 4. 报告结果
     print("\n4. 生成测试报告...")
-    report_results(results, output_csv)
+    
+    # 设置输出文件路径
+    csv_path = os.path.join(output_dir, output_csv)
+    plot_path = os.path.join(output_dir, "fps_plot.png")
+    
+    report_results(results, csv_path, plot_path)
 
 
 def main():
@@ -380,14 +453,20 @@ def main():
                        help="每个视角渲染的帧数")
     parser.add_argument("--output", default="fps_report.csv", 
                        help="输出CSV文件路径")
-    parser.add_argument("--width", type=int, default=800, 
+    parser.add_argument("--width", type=int, default=1256, 
                        help="渲染宽度")
-    parser.add_argument("--height", type=int, default=600, 
+    parser.add_argument("--height", type=int, default=828, 
                        help="渲染高度")
     parser.add_argument("--background", nargs=3, type=float, default=[0, 0, 0], 
                        help="背景颜色 (R G B)")
     parser.add_argument("--max-views", type=int, default=None, 
                        help="最大测试视角数（用于快速测试）")
+    parser.add_argument("--save-images", action="store_true", 
+                       help="保存渲染图片")
+    parser.add_argument("--image-interval", type=int, default=40, 
+                       help="图片保存间隔（每隔多少个视角保存一次）")
+    parser.add_argument("--output-dir", type=str, default=None, 
+                       help="输出目录，默认使用viewer/{model_name}")
     
     args = parser.parse_args()
     
@@ -399,7 +478,10 @@ def main():
         width=args.width,
         height=args.height,
         background_color=args.background,
-        max_views=args.max_views
+        max_views=args.max_views,
+        save_images=args.save_images,
+        image_save_interval=args.image_interval,
+        output_dir=args.output_dir
     )
 
 

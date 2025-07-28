@@ -14,7 +14,7 @@ def test_simple():
         
         print("开始简单FPS测试...")
         
-        # 只测试前2个视角，每视角5帧
+        # 只测试前2个视角，每视角5帧，保存图片
         test_fps_from_lookat(
             lookat_path="viewer/data/TEST.lookat",
             model_path="eval/flowers",
@@ -22,7 +22,9 @@ def test_simple():
             output_csv="test_simple.csv",
             width=800,
             height=600,
-            max_views=2
+            max_views=2,
+            save_images=True,
+            image_save_interval=1  # 每个视角都保存图片
         )
         
         print("✅ 简单测试完成！")
