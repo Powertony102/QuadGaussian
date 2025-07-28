@@ -267,7 +267,7 @@ def report_results(results: List[tuple], output_csv: Optional[str] = None):
 
 def test_fps_from_lookat(
     lookat_path: str = "viewer/data/TEST.lookat",
-    model_path: str = "output",
+    model_path: str = "eval/flowers",
     n_frames: int = 100,
     output_csv: str = "fps_report.csv",
     width: int = 800,
@@ -338,9 +338,9 @@ def test_fps_from_lookat(
 def main():
     """命令行入口"""
     parser = argparse.ArgumentParser(description="3DGS FPS测试工具")
-    parser.add_argument("--lookat", default="viewer/images/TEST.lookat", 
+    parser.add_argument("--lookat", default="viewer/data/TEST.lookat", 
                        help="相机轨迹文件路径")
-    parser.add_argument("--model", default="output", 
+    parser.add_argument("--model", default="eval/flowers", 
                        help="模型路径")
     parser.add_argument("--frames", type=int, default=100, 
                        help="每个视角渲染的帧数")
