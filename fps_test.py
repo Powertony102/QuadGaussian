@@ -67,7 +67,7 @@ def parse_lookat_file(path: str) -> List[Dict]:
     return viewpoints
 
 
-def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600):
+def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600, is_speedy_splat: bool = False):
     """
     从lookat参数创建Camera对象
     
@@ -75,6 +75,7 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600)
         params: 包含origin, target, up, fovy, clip的字典
         width: 图像宽度
         height: 图像高度
+        is_speedy_splat: 是否为speedy-splat模型
         
     Returns:
         Camera对象
@@ -114,21 +115,36 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600)
     from PIL import Image
     pil_image = Image.fromarray(dummy_image)
     
-    # 创建Camera对象
-    camera = Camera(
-        resolution=(width, height),
-        colmap_id=0,
-        R=R,
-        T=T,
-        FoVx=fovx,
-        FoVy=fovy,
-        depth_params=None,
-        image=pil_image,
-        invdepthmap=None,
-        image_name="fps_test",
-        uid=0,
-        data_device="cuda"
-    )
+    if is_speedy_splat:
+        # Speedy-splat模型的Camera构造函数
+        camera = Camera(
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=fovx,
+            FoVy=fovy,
+            image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
+            gt_alpha_mask=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
+    else:
+        # 默认模型的Camera构造函数
+        camera = Camera(
+            resolution=(width, height),
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=fovx,
+            FoVy=fovy,
+            depth_params=None,
+            image=pil_image,
+            invdepthmap=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
     
     return camera
 
@@ -345,7 +361,8 @@ def test_fps_from_lookat(
     save_images: bool = False,
     image_save_interval: int = 10,
     output_dir: str = None,
-    skip_train_test_exp: bool = False
+    skip_train_test_exp: bool = False,
+    is_speedy_splat: bool = False
 ):
     """
     主测试函数
@@ -411,7 +428,7 @@ def test_fps_from_lookat(
     for idx, view_params in tqdm(enumerate(views), total=len(views), desc="渲染进度", unit="视角"):
         try:
             # 创建相机
-            camera = create_camera_from_lookat(view_params, width, height)
+            camera = create_camera_from_lookat(view_params, width, height, is_speedy_splat)
             
             # 决定是否保存图片
             save_image = save_images and (idx % image_save_interval == 0)
@@ -470,6 +487,8 @@ def main():
                        help="输出目录，默认使用viewer/{model_name}")
     parser.add_argument("--skip-train-test-exp", action="store_true", 
                        help="跳过train_test_exp参数设置（已废弃，保留用于兼容性）")
+    parser.add_argument("--speedy-splat", action="store_true", 
+                       help="使用speedy-splat模型的Camera构造函数")
     
     args = parser.parse_args()
     
@@ -485,7 +504,8 @@ def main():
         save_images=args.save_images,
         image_save_interval=args.image_interval,
         output_dir=args.output_dir,
-        skip_train_test_exp=args.skip_train_test_exp
+        skip_train_test_exp=args.skip_train_test_exp,
+        is_speedy_splat=args.speedy_splat
     )
 
 
