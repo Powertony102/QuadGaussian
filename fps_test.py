@@ -228,7 +228,7 @@ def render_and_time(camera, gaussians, pipeline,
     return fps
 
 
-def report_results(results: List[Tuple[int, float]], output_csv: Optional[str] = None):
+def report_results(results: List[tuple], output_csv: Optional[str] = None):
     """
     报告测试结果
     
