@@ -187,7 +187,16 @@ def init_scene(model_path: str, iteration: int = -1):
     if not os.path.exists(ply_path):
         raise FileNotFoundError(f"找不到模型文件: {ply_path}")
     
-    gaussians.load_ply(ply_path, model.train_test_exp)
+    # 确保train_test_exp是布尔值
+    use_train_test_exp = bool(model.train_test_exp) if model.train_test_exp is not None else False
+    gaussians.load_ply(ply_path, use_train_test_exp)
+    
+    # 初始化必要的属性，避免在渲染时出错
+    if not hasattr(gaussians, 'exposure_mapping') or gaussians.exposure_mapping is None:
+        gaussians.exposure_mapping = {}
+    if not hasattr(gaussians, '_exposure') or gaussians._exposure is None:
+        # 创建一个默认的exposure矩阵
+        gaussians._exposure = torch.eye(3, 4, device="cuda")[None]
     
     print(f"场景初始化完成，模型路径: {model_path}")
     print(f"加载迭代次数: {loaded_iter}")

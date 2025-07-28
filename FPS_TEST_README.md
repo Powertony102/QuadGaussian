@@ -39,6 +39,9 @@ pip install torch torchvision numpy pillow opencv-python tqdm
 # 首先检查模型路径是否正确
 python check_model.py [model_path]
 
+# 测试模型加载功能
+python test_load_model.py
+
 # 使用默认参数运行完整测试
 python fps_test.py
 
