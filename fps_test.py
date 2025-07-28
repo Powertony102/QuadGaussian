@@ -163,6 +163,7 @@ def init_scene(model_path: str, iteration: int = -1):
     args.train_test_exp = False
     args.data_device = "cuda"
     args.eval = False
+    args.sh_degree = 3  # 设置sh_degree参数
     
     # 提取参数
     model = model_params.extract(args)
