@@ -165,8 +165,6 @@ def init_scene(model_path: str, iteration: int = -1, skip_train_test_exp: bool =
     args.depths = ""
     args.resolution = -1
     args.white_background = False
-    if not skip_train_test_exp:
-        args.train_test_exp = False
     args.data_device = "cuda"
     args.eval = False
     args.sh_degree = 3  # 设置sh_degree参数
@@ -194,12 +192,8 @@ def init_scene(model_path: str, iteration: int = -1, skip_train_test_exp: bool =
     if not os.path.exists(ply_path):
         raise FileNotFoundError(f"找不到模型文件: {ply_path}")
     
-    # 确保train_test_exp是布尔值
-    if skip_train_test_exp:
-        use_train_test_exp = False
-    else:
-        use_train_test_exp = bool(model.train_test_exp) if model.train_test_exp is not None else False
-    gaussians.load_ply(ply_path, use_train_test_exp)
+    # 加载PLY文件（这个模型的load_ply只接受2个参数）
+    gaussians.load_ply(ply_path)
     
     # 初始化必要的属性，避免在渲染时出错
     if not hasattr(gaussians, 'exposure_mapping') or gaussians.exposure_mapping is None:
@@ -475,7 +469,7 @@ def main():
     parser.add_argument("--output-dir", type=str, default=None, 
                        help="输出目录，默认使用viewer/{model_name}")
     parser.add_argument("--skip-train-test-exp", action="store_true", 
-                       help="跳过train_test_exp参数设置")
+                       help="跳过train_test_exp参数设置（已废弃，保留用于兼容性）")
     
     args = parser.parse_args()
     
