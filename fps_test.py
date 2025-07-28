@@ -368,7 +368,8 @@ def test_fps_from_lookat(
     image_save_interval: int = 10,
     output_dir: str = None,
     skip_train_test_exp: bool = False,
-    is_speedy_splat: bool = False
+    is_speedy_splat: bool = False,
+    even_only: bool = False
 ):
     """
     主测试函数
@@ -416,6 +417,11 @@ def test_fps_from_lookat(
     if max_views:
         views = views[:max_views]
         print(f"限制测试视角数为: {max_views}")
+    
+    # 如果只测试偶数视角
+    if even_only:
+        views = views[::2]  # 取偶数索引的视角
+        print(f"只测试偶数视角，共 {len(views)} 个视角")
     
     # 2. 初始化场景
     print("\n2. 初始化场景和渲染器...")
@@ -495,6 +501,8 @@ def main():
                        help="跳过train_test_exp参数设置（已废弃，保留用于兼容性）")
     parser.add_argument("--speedy-splat", action="store_true", 
                        help="使用speedy-splat模型的Camera构造函数")
+    parser.add_argument("--even-only", action="store_true", 
+                       help="只测试偶数索引的相机视角")
     
     args = parser.parse_args()
     
@@ -511,7 +519,8 @@ def main():
         image_save_interval=args.image_interval,
         output_dir=args.output_dir,
         skip_train_test_exp=args.skip_train_test_exp,
-        is_speedy_splat=args.speedy_splat
+        is_speedy_splat=args.speedy_splat,
+        even_only=args.even_only
     )
 
 
