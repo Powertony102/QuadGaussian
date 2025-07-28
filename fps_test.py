@@ -13,6 +13,7 @@ import sys
 import numpy as np
 import torch
 from typing import List, Dict, Optional
+from tqdm import tqdm
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -239,8 +240,13 @@ def render_and_time(camera, gaussians, pipeline,
     start_time = time.time()
     
     with torch.no_grad():
-        for _ in range(n_frames):
-            render(camera, gaussians, pipeline, background)
+        # 为单帧渲染添加进度条（当帧数较多时）
+        if n_frames > 10:
+            for _ in tqdm(range(n_frames), desc="渲染帧", leave=False, unit="帧"):
+                render(camera, gaussians, pipeline, background)
+        else:
+            for _ in range(n_frames):
+                render(camera, gaussians, pipeline, background)
     
     # 同步GPU
     if torch.cuda.is_available():
@@ -341,7 +347,8 @@ def test_fps_from_lookat(
     print(f"\n3. 开始FPS测试，共{len(views)}个视角...")
     results = []
     
-    for idx, view_params in enumerate(views):
+    # 使用tqdm进度条显示渲染进度
+    for idx, view_params in tqdm(enumerate(views), total=len(views), desc="渲染进度", unit="视角"):
         try:
             # 创建相机
             camera = create_camera_from_lookat(view_params, width, height)
@@ -350,10 +357,11 @@ def test_fps_from_lookat(
             fps = render_and_time(camera, gaussians, pipeline, n_frames, background_color)
             results.append((idx, fps))
             
-            print(f"View {idx:03d}: {fps:.2f} FPS")
+            # 更新进度条描述，显示当前FPS
+            tqdm.write(f"View {idx:03d}: {fps:.2f} FPS")
             
         except Exception as e:
-            print(f"View {idx:03d}: 渲染失败 - {e}")
+            tqdm.write(f"View {idx:03d}: 渲染失败 - {e}")
             continue
     
     # 4. 报告结果
