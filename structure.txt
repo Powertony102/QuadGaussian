@@ -1,24 +1,183 @@
 .
-├── __pycache__
-│   └── train.cpython-39.pyc
 ├── analyze_metrics.py
 ├── arguments
-│   └── __init__.py
+│   ├── __init__.py
+│   └── __pycache__
+│       └── __init__.cpython-310.pyc
 ├── batch_metric.py
 ├── batch_render.py
 ├── compute_scene_metrics.py
 ├── convert.py
 ├── draw.py
 ├── environment.yml
+├── eval
+│   ├── all_metrics.zip
+│   ├── bicycle
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── train
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── bonsai
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── counter
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── drjohnson
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── flowers
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── flowers.zip
+│   ├── garden
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── kitchen
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── playroom
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── room
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── stump
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── train
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   ├── treehill
+│   │   ├── cameras.json
+│   │   ├── cfg_args
+│   │   ├── exposure.json
+│   │   ├── input.ply
+│   │   ├── per_view.json
+│   │   ├── point_cloud
+│   │   ├── results.json
+│   │   ├── test
+│   │   ├── TRAIN_INFO
+│   │   └── wandb
+│   └── truck
+│       ├── cameras.json
+│       ├── cfg_args
+│       ├── exposure.json
+│       ├── input.ply
+│       ├── per_view.json
+│       ├── point_cloud
+│       ├── results.json
+│       ├── test
+│       ├── TRAIN_INFO
+│       └── wandb
+├── fps_test_config.py
+├── fps_test.py
+├── FPS_TEST_README.md
 ├── full_eval.py
 ├── gaussian_renderer
 │   ├── __init__.py
 │   ├── __init__quad.py
-│   └── network_gui.py
+│   ├── network_gui.py
+│   └── __pycache__
+│       ├── __init__.cpython-310.pyc
+│       └── network_gui.cpython-310.pyc
 ├── LICENSE.md
 ├── lpipsPyTorch
 │   ├── __init__.py
-│   └── modules
+│   ├── modules
+│   │   ├── lpips.py
+│   │   ├── networks.py
+│   │   ├── __pycache__
+│   │   └── utils.py
+│   └── __pycache__
+│       └── __init__.cpython-310.pyc
 ├── metrics.py
 ├── processing.py
 ├── README.md
@@ -27,21 +186,60 @@
 ├── results.md
 ├── run_scene_metrics.py
 ├── scene
-│   ├── __init__.py
 │   ├── cameras.py
 │   ├── colmap_loader.py
 │   ├── dataset_readers.py
-│   └── gaussian_model.py
+│   ├── gaussian_model.py
+│   ├── __init__.py
+│   └── __pycache__
+│       ├── cameras.cpython-310.pyc
+│       ├── colmap_loader.cpython-310.pyc
+│       ├── dataset_readers.cpython-310.pyc
+│       ├── gaussian_model.cpython-310.pyc
+│       └── __init__.cpython-310.pyc
 ├── structure.txt
 ├── submodules
 │   ├── diff-gaussian-rasterization
+│   │   ├── build
+│   │   ├── CMakeLists.txt
+│   │   ├── cuda_rasterizer
+│   │   ├── diff_gaussian_rasterization
+│   │   ├── diff_gaussian_rasterization.egg-info
+│   │   ├── ext.cpp
+│   │   ├── LICENSE.md
+│   │   ├── Makefile.test
+│   │   ├── rasterize_points.cu
+│   │   ├── rasterize_points.h
+│   │   ├── README.md
+│   │   ├── result.txt
+│   │   ├── setup.py
+│   │   └── third_party
 │   ├── fused-ssim
+│   │   ├── ext.cpp
+│   │   ├── fused_ssim
+│   │   ├── images
+│   │   ├── LICENSE
+│   │   ├── README.md
+│   │   ├── setup.py
+│   │   ├── ssim.cu
+│   │   ├── ssim.h
+│   │   └── tests
 │   └── simple-knn
+│       ├── ext.cpp
+│       ├── LICENSE.md
+│       ├── setup.py
+│       ├── simple_knn
+│       ├── simple_knn.cu
+│       ├── simple_knn.h
+│       ├── spatial.cu
+│       └── spatial.h
 ├── test_compute_metrics.py
+├── test_fps_simple.py
+├── test_parser.py
 ├── train_deepblending.py
 ├── train_mipnerf360_config.py
-├── train_tank.py
 ├── train.py
+├── train_tank.py
 ├── utils
 │   ├── camera_utils.py
 │   ├── general_utils.py
@@ -49,10 +247,37 @@
 │   ├── image_utils.py
 │   ├── loss_utils.py
 │   ├── make_depth_scale.py
+│   ├── __pycache__
+│   │   ├── camera_utils.cpython-310.pyc
+│   │   ├── general_utils.cpython-310.pyc
+│   │   ├── graphics_utils.cpython-310.pyc
+│   │   ├── image_utils.cpython-310.pyc
+│   │   ├── loss_utils.cpython-310.pyc
+│   │   ├── sh_utils.cpython-310.pyc
+│   │   └── system_utils.cpython-310.pyc
 │   ├── read_write_model.py
 │   ├── sh_utils.py
 │   └── system_utils.py
-└── viewer
-    └── images
+├── viewer
+│   ├── data
+│   │   ├── cameras.txt
+│   │   ├── images.txt
+│   │   ├── TEST.lookat
+│   │   ├── TEST.out
+│   │   └── TEST.path
+│   └── viewpoint_bin
+│       ├── close_1
+│       ├── close_2
+│       ├── close_3
+│       ├── close_4
+│       ├── far_1
+│       ├── far_2
+│       ├── mid_1
+│       ├── mid_2
+│       ├── tight_1
+│       ├── tight_2
+│       └── tight_3
+├── zip_metrics.py
+└── zip.py
 
-14 directories, 42 files
+82 directories, 198 files
