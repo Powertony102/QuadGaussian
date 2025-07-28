@@ -1,0 +1,58 @@
+.
+├── __pycache__
+│   └── train.cpython-39.pyc
+├── analyze_metrics.py
+├── arguments
+│   └── __init__.py
+├── batch_metric.py
+├── batch_render.py
+├── compute_scene_metrics.py
+├── convert.py
+├── draw.py
+├── environment.yml
+├── full_eval.py
+├── gaussian_renderer
+│   ├── __init__.py
+│   ├── __init__quad.py
+│   └── network_gui.py
+├── LICENSE.md
+├── lpipsPyTorch
+│   ├── __init__.py
+│   └── modules
+├── metrics.py
+├── processing.py
+├── README.md
+├── render.py
+├── requirement.txt
+├── results.md
+├── run_scene_metrics.py
+├── scene
+│   ├── __init__.py
+│   ├── cameras.py
+│   ├── colmap_loader.py
+│   ├── dataset_readers.py
+│   └── gaussian_model.py
+├── structure.txt
+├── submodules
+│   ├── diff-gaussian-rasterization
+│   ├── fused-ssim
+│   └── simple-knn
+├── test_compute_metrics.py
+├── train_deepblending.py
+├── train_mipnerf360_config.py
+├── train_tank.py
+├── train.py
+├── utils
+│   ├── camera_utils.py
+│   ├── general_utils.py
+│   ├── graphics_utils.py
+│   ├── image_utils.py
+│   ├── loss_utils.py
+│   ├── make_depth_scale.py
+│   ├── read_write_model.py
+│   ├── sh_utils.py
+│   └── system_utils.py
+└── viewer
+    └── images
+
+14 directories, 42 files
