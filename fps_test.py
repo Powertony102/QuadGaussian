@@ -252,12 +252,16 @@ def render_and_time(camera, gaussians, pipeline,
         for _ in range(5):
             render(camera, gaussians, pipeline, background)
     
-    # 同步GPU
+    # 创建CUDA事件用于精确计时
     if torch.cuda.is_available():
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+        
+        # 同步GPU并开始计时
         torch.cuda.synchronize()
-    
-    # 开始计时
-    start_time = time.time()
+        start_event.record()
+    else:
+        start_time = time.time()
     
     with torch.no_grad():
         # 为单帧渲染添加进度条（当帧数较多时）
@@ -268,13 +272,15 @@ def render_and_time(camera, gaussians, pipeline,
             for _ in range(n_frames):
                 render(camera, gaussians, pipeline, background)
     
-    # 同步GPU
+    # 结束计时
     if torch.cuda.is_available():
+        end_event.record()
         torch.cuda.synchronize()
+        elapsed_time = start_event.elapsed_time(end_event) / 1000.0  # 转换为秒
+    else:
+        end_time = time.time()
+        elapsed_time = end_time - start_time
     
-    end_time = time.time()
-    
-    elapsed_time = end_time - start_time
     fps = n_frames / elapsed_time
     
     # 保存渲染图片
