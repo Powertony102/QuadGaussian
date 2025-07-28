@@ -70,8 +70,9 @@ python fps_test.py [选项]
   --background R G B     背景颜色 (默认: 0 0 0)
   --max-views N          最大测试视角数（用于快速测试）
   --save-images          保存渲染图片
-  --image-interval N     图片保存间隔（每隔多少个视角保存一次，默认: 10）
+  --image-interval N     图片保存间隔（每隔多少个视角保存一次，默认: 40）
   --output-dir PATH      输出目录，默认使用viewer/{model_name}
+  --skip-train-test-exp  跳过train_test_exp参数设置
 ```
 
 ### 3. 示例用法
@@ -94,6 +95,9 @@ python fps_test.py --save-images --image-interval 10
 
 # 完整示例：保存图片并生成可视化
 python fps_test.py --model eval/flowers --save-images --image-interval 5 --max-views 20
+
+# 跳过train_test_exp参数设置
+python fps_test.py --model eval/flowers --skip-train-test-exp
 ```
 
 ## 输入文件格式

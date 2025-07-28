@@ -133,13 +133,14 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600)
     return camera
 
 
-def init_scene(model_path: str, iteration: int = -1):
+def init_scene(model_path: str, iteration: int = -1, skip_train_test_exp: bool = False):
     """
     初始化场景和渲染器
     
     Args:
         model_path: 模型路径
         iteration: 模型迭代次数
+        skip_train_test_exp: 是否跳过train_test_exp参数设置
         
     Returns:
         (gaussian_model, pipeline_params)
@@ -164,7 +165,8 @@ def init_scene(model_path: str, iteration: int = -1):
     args.depths = ""
     args.resolution = -1
     args.white_background = False
-    args.train_test_exp = False
+    if not skip_train_test_exp:
+        args.train_test_exp = False
     args.data_device = "cuda"
     args.eval = False
     args.sh_degree = 3  # 设置sh_degree参数
@@ -193,7 +195,10 @@ def init_scene(model_path: str, iteration: int = -1):
         raise FileNotFoundError(f"找不到模型文件: {ply_path}")
     
     # 确保train_test_exp是布尔值
-    use_train_test_exp = bool(model.train_test_exp) if model.train_test_exp is not None else False
+    if skip_train_test_exp:
+        use_train_test_exp = False
+    else:
+        use_train_test_exp = bool(model.train_test_exp) if model.train_test_exp is not None else False
     gaussians.load_ply(ply_path, use_train_test_exp)
     
     # 初始化必要的属性，避免在渲染时出错
@@ -315,23 +320,23 @@ def report_results(results: List[tuple], output_csv: Optional[str] = None, plot_
     if plot_path:
         plt.figure(figsize=(12, 6))
         plt.plot(view_ids, fps_values, 'b-o', linewidth=2, markersize=6, label='FPS')
-        plt.axhline(y=np.mean(fps_values), color='r', linestyle='--', alpha=0.7, label=f'平均FPS: {np.mean(fps_values):.2f}')
+        plt.axhline(y=np.mean(fps_values), color='r', linestyle='--', alpha=0.7, label=f'Mean FPS: {np.mean(fps_values):.2f}')
         
-        plt.xlabel('视角ID', fontsize=12)
+        plt.xlabel('View ID', fontsize=12)
         plt.ylabel('FPS', fontsize=12)
-        plt.title('3DGS渲染FPS变化图', fontsize=14, fontweight='bold')
+        plt.title('3DGS Rendering FPS Performance', fontsize=14, fontweight='bold')
         plt.grid(True, alpha=0.3)
         plt.legend()
         
         # 添加统计信息
-        plt.text(0.02, 0.98, f'平均FPS: {np.mean(fps_values):.2f}\n最小FPS: {np.min(fps_values):.2f}\n最大FPS: {np.max(fps_values):.2f}\n标准差: {np.std(fps_values):.2f}', 
+        plt.text(0.02, 0.98, f'Mean FPS: {np.mean(fps_values):.2f}\nMin FPS: {np.min(fps_values):.2f}\nMax FPS: {np.max(fps_values):.2f}\nStd Dev: {np.std(fps_values):.2f}', 
                 transform=plt.gca().transAxes, verticalalignment='top', 
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
         
         plt.tight_layout()
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"FPS图表已保存到: {plot_path}")
+        print(f"FPS chart saved to: {plot_path}")
 
 
 def test_fps_from_lookat(
@@ -345,7 +350,8 @@ def test_fps_from_lookat(
     max_views: Optional[int] = None,
     save_images: bool = False,
     image_save_interval: int = 10,
-    output_dir: str = None
+    output_dir: str = None,
+    skip_train_test_exp: bool = False
 ):
     """
     主测试函数
@@ -362,6 +368,7 @@ def test_fps_from_lookat(
         save_images: 是否保存渲染图片
         image_save_interval: 图片保存间隔（每隔多少个视角保存一次）
         output_dir: 输出目录，如果为None则使用viewer/{model_name}
+        skip_train_test_exp: 是否跳过train_test_exp参数设置
     """
     print("开始3DGS FPS测试")
     print(f"相机轨迹文件: {lookat_path}")
@@ -396,7 +403,7 @@ def test_fps_from_lookat(
     # 2. 初始化场景
     print("\n2. 初始化场景和渲染器...")
     try:
-        gaussians, pipeline = init_scene(model_path)
+        gaussians, pipeline = init_scene(model_path, skip_train_test_exp=skip_train_test_exp)
     except Exception as e:
         print(f"场景初始化失败: {e}")
         print("请确保模型路径正确且包含训练好的模型")
@@ -467,6 +474,8 @@ def main():
                        help="图片保存间隔（每隔多少个视角保存一次）")
     parser.add_argument("--output-dir", type=str, default=None, 
                        help="输出目录，默认使用viewer/{model_name}")
+    parser.add_argument("--skip-train-test-exp", action="store_true", 
+                       help="跳过train_test_exp参数设置")
     
     args = parser.parse_args()
     
@@ -481,7 +490,8 @@ def main():
         max_views=args.max_views,
         save_images=args.save_images,
         image_save_interval=args.image_interval,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        skip_train_test_exp=args.skip_train_test_exp
     )
 
 
