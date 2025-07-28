@@ -266,7 +266,7 @@ def report_results(results: List[tuple], output_csv: Optional[str] = None):
 
 
 def test_fps_from_lookat(
-    lookat_path: str = "viewer/images/TEST.lookat",
+    lookat_path: str = "viewer/data/TEST.lookat",
     model_path: str = "output",
     n_frames: int = 100,
     output_csv: str = "fps_report.csv",
