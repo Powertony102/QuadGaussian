@@ -12,16 +12,15 @@ import os
 import sys
 import numpy as np
 import torch
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from utils import camera_utils, graphics_utils, general_utils, system_utils
-from scene.cameras import Camera, MiniCam
-from gaussian_renderer import render, GaussianModel
-from arguments import ModelParams, PipelineParams, get_combined_args
-from scene import Scene
+# 延迟导入，避免循环依赖
+import utils.graphics_utils as graphics_utils
+import utils.general_utils as general_utils
+import utils.system_utils as system_utils
 
 
 def parse_lookat_file(path: str) -> List[Dict]:
@@ -65,7 +64,7 @@ def parse_lookat_file(path: str) -> List[Dict]:
     return viewpoints
 
 
-def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600) -> Camera:
+def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600):
     """
     从lookat参数创建Camera对象
     
@@ -77,6 +76,9 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600)
     Returns:
         Camera对象
     """
+    # 延迟导入，避免循环依赖
+    from scene.cameras import Camera
+    
     origin = np.array(params["origin"])
     target = np.array(params["target"])
     up = np.array(params["up"])
@@ -128,7 +130,7 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600)
     return camera
 
 
-def init_scene(model_path: str, iteration: int = -1) -> Tuple[GaussianModel, PipelineParams]:
+def init_scene(model_path: str, iteration: int = -1):
     """
     初始化场景和渲染器
     
@@ -139,6 +141,11 @@ def init_scene(model_path: str, iteration: int = -1) -> Tuple[GaussianModel, Pip
     Returns:
         (gaussian_model, pipeline_params)
     """
+    # 延迟导入，避免循环依赖
+    from arguments import ModelParams, PipelineParams
+    from gaussian_renderer import GaussianModel
+    from scene import Scene
+    
     # 创建参数解析器
     parser = argparse.ArgumentParser(description="FPS Test")
     model_params = ModelParams(parser, sentinel=True)
@@ -173,7 +180,7 @@ def init_scene(model_path: str, iteration: int = -1) -> Tuple[GaussianModel, Pip
     return gaussians, pipeline
 
 
-def render_and_time(camera: Camera, gaussians: GaussianModel, pipeline: PipelineParams, 
+def render_and_time(camera, gaussians, pipeline, 
                    n_frames: int = 100, background_color: List[float] = [0, 0, 0]) -> float:
     """
     渲染并计时
@@ -188,6 +195,9 @@ def render_and_time(camera: Camera, gaussians: GaussianModel, pipeline: Pipeline
     Returns:
         FPS值
     """
+    # 延迟导入，避免循环依赖
+    from gaussian_renderer import render
+    
     background = torch.tensor(background_color, dtype=torch.float32, device="cuda")
     
     # 预热
