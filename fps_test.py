@@ -130,6 +130,69 @@ def parse_bundle_file(path: str) -> List[Dict]:
     return viewpoints
 
 
+def parse_colmap_format(cameras_file: str, images_file: str) -> List[Dict]:
+    """
+    解析COLMAP格式的相机参数
+    
+    Args:
+        cameras_file: cameras.txt或cameras.bin文件路径
+        images_file: images.txt或images.bin文件路径
+        
+    Returns:
+        包含相机参数的字典列表
+    """
+    # 延迟导入，避免循环依赖
+    from scene.colmap_loader import read_extrinsics_binary, read_intrinsics_binary, read_extrinsics_text, read_intrinsics_text, qvec2rotmat
+    from utils.graphics_utils import focal2fov
+    
+    viewpoints = []
+    
+    try:
+        # 尝试读取二进制文件
+        cam_extrinsics = read_extrinsics_binary(images_file)
+        cam_intrinsics = read_intrinsics_binary(cameras_file)
+    except:
+        # 如果二进制文件不存在，读取文本文件
+        cam_extrinsics = read_extrinsics_text(images_file)
+        cam_intrinsics = read_intrinsics_text(cameras_file)
+    
+    print(f"COLMAP文件包含 {len(cam_extrinsics)} 个相机")
+    
+    for idx, key in enumerate(cam_extrinsics):
+        extr = cam_extrinsics[key]
+        intr = cam_intrinsics[extr.camera_id]
+        
+        # 四元数转旋转矩阵
+        R = np.transpose(qvec2rotmat(extr.qvec))
+        T = np.array(extr.tvec)
+        
+        # 计算FOV
+        if intr.model == "SIMPLE_PINHOLE":
+            focal_length_x = intr.params[0]
+            FovY = focal2fov(focal_length_x, intr.height)
+            FovX = focal2fov(focal_length_x, intr.width)
+        elif intr.model == "PINHOLE":
+            focal_length_x = intr.params[0]
+            focal_length_y = intr.params[1]
+            FovY = focal2fov(focal_length_y, intr.height)
+            FovX = focal2fov(focal_length_x, intr.width)
+        else:
+            raise ValueError(f"不支持的相机模型: {intr.model}")
+        
+        viewpoints.append({
+            "R": R,
+            "T": T,
+            "FovX": FovX,
+            "FovY": FovY,
+            "width": intr.width,
+            "height": intr.height,
+            "cam_id": idx
+        })
+    
+    print(f"成功解析了 {len(viewpoints)} 个相机参数")
+    return viewpoints
+
+
 def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600, is_speedy_splat: bool = False):
     """
     从lookat参数创建Camera对象
@@ -271,6 +334,74 @@ def create_camera_from_bundle(params: Dict, width: int = 800, height: int = 600,
             T=T,
             FoVx=fovx,
             FoVy=fovy,
+            depth_params=None,
+            image=pil_image,
+            invdepthmap=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
+    
+    return camera
+
+
+def create_camera_from_colmap(params: Dict, width: int = 800, height: int = 600, is_speedy_splat: bool = False):
+    """
+    从COLMAP格式参数创建Camera对象
+    
+    Args:
+        params: 包含R, T, FovX, FovY, width, height的字典
+        width: 图像宽度（如果为None则使用params中的width）
+        height: 图像高度（如果为None则使用params中的height）
+        is_speedy_splat: 是否为speedy-splat模型
+        
+    Returns:
+        Camera对象
+    """
+    # 延迟导入，避免循环依赖
+    from scene.cameras import Camera
+    
+    R = params["R"]
+    T = params["T"]
+    FovX = params["FovX"]
+    FovY = params["FovY"]
+    
+    # 使用params中的分辨率，如果没有指定的话
+    if width is None:
+        width = params["width"]
+    if height is None:
+        height = params["height"]
+    
+    # 创建虚拟图像（用于Camera构造函数）
+    dummy_image = np.zeros((height, width, 3), dtype=np.uint8)
+    from PIL import Image
+    pil_image = Image.fromarray(dummy_image)
+    
+    if is_speedy_splat:
+        # Speedy-splat模型的Camera构造函数
+        camera = Camera(
+            resolution=(width, height),
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=FovX,
+            FoVy=FovY,
+            depth_params=None,
+            image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
+            invdepthmap=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
+    else:
+        # 默认模型的Camera构造函数
+        camera = Camera(
+            resolution=(width, height),
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=FovX,
+            FoVy=FovY,
             depth_params=None,
             image=pil_image,
             invdepthmap=None,
@@ -503,7 +634,10 @@ def test_fps_from_camera_file(
     skip_train_test_exp: bool = False,
     is_speedy_splat: bool = False,
     even_only: bool = False,
-    use_bundle: bool = True
+    use_bundle: bool = True,
+    use_colmap: bool = False,
+    cameras_file: str = None,
+    images_file: str = None
 ):
     """
     主测试函数
@@ -523,8 +657,13 @@ def test_fps_from_camera_file(
         skip_train_test_exp: 是否跳过train_test_exp参数设置
     """
     print("开始3DGS FPS测试")
-    print(f"相机轨迹文件: {camera_file}")
-    print(f"使用格式: {'Bundle (.out)' if use_bundle else 'Lookat (.lookat)'}")
+    if use_colmap:
+        print(f"相机内参文件: {cameras_file}")
+        print(f"相机外参文件: {images_file}")
+        print(f"使用格式: COLMAP")
+    else:
+        print(f"相机轨迹文件: {camera_file}")
+        print(f"使用格式: {'Bundle (.out)' if use_bundle else 'Lookat (.lookat)'}")
     print(f"模型路径: {model_path}")
     print(f"渲染分辨率: {width}x{height}")
     print(f"每视角渲染帧数: {n_frames}")
@@ -547,7 +686,9 @@ def test_fps_from_camera_file(
     
     # 1. 解析相机列表
     print("\n1. 解析相机轨迹文件...")
-    if use_bundle:
+    if use_colmap:
+        views = parse_colmap_format(cameras_file, images_file)
+    elif use_bundle:
         views = parse_bundle_file(camera_file)
     else:
         views = parse_lookat_file(camera_file)
@@ -578,7 +719,9 @@ def test_fps_from_camera_file(
     for idx, view_params in tqdm(enumerate(views), total=len(views), desc="渲染进度", unit="视角"):
         try:
             # 创建相机
-            if use_bundle:
+            if use_colmap:
+                camera = create_camera_from_colmap(view_params, width, height, is_speedy_splat)
+            elif use_bundle:
                 camera = create_camera_from_bundle(view_params, width, height, is_speedy_splat)
             else:
                 camera = create_camera_from_lookat(view_params, width, height, is_speedy_splat)
@@ -646,11 +789,18 @@ def main():
                        help="只测试偶数索引的相机视角")
     parser.add_argument("--use-lookat", action="store_true", 
                        help="使用lookat格式而不是bundle格式")
+    parser.add_argument("--use-colmap", action="store_true", 
+                       help="使用COLMAP格式")
+    parser.add_argument("--cameras-file", type=str, default=None, 
+                       help="COLMAP相机内参文件路径 (cameras.txt或cameras.bin)")
+    parser.add_argument("--images-file", type=str, default=None, 
+                       help="COLMAP相机外参文件路径 (images.txt或images.bin)")
     
     args = parser.parse_args()
     
-    # 根据文件扩展名自动判断格式
-    use_bundle = not args.use_lookat and args.camera_file.endswith('.out')
+    # 根据参数判断格式
+    use_colmap = args.use_colmap
+    use_bundle = not args.use_lookat and not use_colmap and args.camera_file.endswith('.out')
     
     test_fps_from_camera_file(
         camera_file=args.camera_file,
@@ -667,7 +817,10 @@ def main():
         skip_train_test_exp=args.skip_train_test_exp,
         is_speedy_splat=args.speedy_splat,
         even_only=args.even_only,
-        use_bundle=use_bundle
+        use_bundle=use_bundle,
+        use_colmap=use_colmap,
+        cameras_file=args.cameras_file,
+        images_file=args.images_file
     )
 
 
