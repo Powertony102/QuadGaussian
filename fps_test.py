@@ -246,15 +246,13 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     if is_speedy_splat:
         # Speedy-splat模型的Camera构造函数
         camera = Camera(
-            resolution=(width, height),
             colmap_id=0,
             R=R,
             T=T,
             FoVx=fovx,
             FoVy=fovy,
-            depth_params=None,
             image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
-            invdepthmap=None,
+            gt_alpha_mask=None,
             image_name="fps_test",
             uid=0,
             data_device="cuda"
@@ -312,15 +310,13 @@ def create_camera_from_bundle(params: Dict, width: int = 800, height: int = 600,
     if is_speedy_splat:
         # Speedy-splat模型的Camera构造函数
         camera = Camera(
-            resolution=(width, height),
             colmap_id=0,
             R=R,
             T=T,
             FoVx=fovx,
             FoVy=fovy,
-            depth_params=None,
             image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
-            invdepthmap=None,
+            gt_alpha_mask=None,
             image_name="fps_test",
             uid=0,
             data_device="cuda"
@@ -380,15 +376,13 @@ def create_camera_from_colmap(params: Dict, width: int = 800, height: int = 600,
     if is_speedy_splat:
         # Speedy-splat模型的Camera构造函数
         camera = Camera(
-            resolution=(width, height),
             colmap_id=0,
             R=R,
             T=T,
             FoVx=FovX,
             FoVy=FovY,
-            depth_params=None,
             image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
-            invdepthmap=None,
+            gt_alpha_mask=None,
             image_name="fps_test",
             uid=0,
             data_device="cuda"
