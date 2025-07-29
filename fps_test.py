@@ -67,6 +67,69 @@ def parse_lookat_file(path: str) -> List[Dict]:
     return viewpoints
 
 
+def parse_bundle_file(path: str) -> List[Dict]:
+    """
+    解析Bundle格式的.out文件，提取相机参数
+    
+    Args:
+        path: .out文件路径
+        
+    Returns:
+        包含相机参数的字典列表
+    """
+    viewpoints = []
+    
+    with open(path, 'r') as f:
+        lines = f.readlines()
+    
+    # 跳过第一行注释
+    if not lines or not lines[0].startswith('# Bundle file'):
+        raise ValueError("不是有效的Bundle文件格式")
+    
+    # 解析相机数量
+    header_parts = lines[1].strip().split()
+    num_cameras = int(header_parts[0])
+    
+    print(f"Bundle文件包含 {num_cameras} 个相机")
+    
+    # 解析每个相机的参数
+    line_idx = 2  # 从第3行开始
+    for cam_idx in range(num_cameras):
+        if line_idx >= len(lines):
+            break
+            
+        # 解析焦距和畸变参数
+        focal_line = lines[line_idx].strip().split()
+        focal = float(focal_line[0])
+        # 跳过畸变参数
+        line_idx += 1
+        
+        # 解析旋转矩阵（3行）
+        R = []
+        for i in range(3):
+            if line_idx >= len(lines):
+                break
+            row = [float(x) for x in lines[line_idx].strip().split()]
+            R.append(row)
+            line_idx += 1
+        
+        # 解析平移向量
+        if line_idx >= len(lines):
+            break
+        T = [float(x) for x in lines[line_idx].strip().split()]
+        line_idx += 1
+        
+        viewpoints.append({
+            "focal": focal,
+            "R": np.array(R),
+            "T": np.array(T),
+            "cam_id": cam_idx
+        })
+    
+    print(f"成功解析了 {len(viewpoints)} 个相机参数")
+    return viewpoints
+
+
 def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600, is_speedy_splat: bool = False):
     """
     从lookat参数创建Camera对象
@@ -111,6 +174,72 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     # 计算FOV
     fovy = params["fovy"]
     fovx = fovy * width / height
+    
+    # 创建虚拟图像（用于Camera构造函数）
+    dummy_image = np.zeros((height, width, 3), dtype=np.uint8)
+    from PIL import Image
+    pil_image = Image.fromarray(dummy_image)
+    
+    if is_speedy_splat:
+        # Speedy-splat模型的Camera构造函数
+        camera = Camera(
+            resolution=(width, height),
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=fovx,
+            FoVy=fovy,
+            depth_params=None,
+            image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
+            invdepthmap=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
+    else:
+        # 默认模型的Camera构造函数
+        camera = Camera(
+            resolution=(width, height),
+            colmap_id=0,
+            R=R,
+            T=T,
+            FoVx=fovx,
+            FoVy=fovy,
+            depth_params=None,
+            image=pil_image,
+            invdepthmap=None,
+            image_name="fps_test",
+            uid=0,
+            data_device="cuda"
+        )
+    
+    return camera
+
+
+def create_camera_from_bundle(params: Dict, width: int = 800, height: int = 600, is_speedy_splat: bool = False):
+    """
+    从Bundle格式参数创建Camera对象
+    
+    Args:
+        params: 包含focal, R, T的字典
+        width: 图像宽度
+        height: 图像高度
+        is_speedy_splat: 是否为speedy-splat模型
+        
+    Returns:
+        Camera对象
+    """
+    # 延迟导入，避免循环依赖
+    from scene.cameras import Camera
+    
+    R = params["R"]
+    T = params["T"]
+    focal = params["focal"]
+    
+    # 计算FOV
+    # Bundle格式中的focal是像素焦距，需要转换为角度
+    fovy = 2 * np.arctan(height / (2 * focal))
+    fovx = 2 * np.arctan(width / (2 * focal))
     
     # 创建虚拟图像（用于Camera构造函数）
     dummy_image = np.zeros((height, width, 3), dtype=np.uint8)
@@ -359,8 +488,8 @@ def report_results(results: List[tuple], output_csv: Optional[str] = None, plot_
         print(f"FPS chart saved to: {plot_path}")
 
 
-def test_fps_from_lookat(
-    lookat_path: str = "viewer/data/TEST.lookat",
+def test_fps_from_camera_file(
+    camera_file: str = "viewer/data/TEST.out",
     model_path: str = "eval/flowers",
     n_frames: int = 100,
     output_csv: str = "fps_report.csv",
@@ -373,7 +502,8 @@ def test_fps_from_lookat(
     output_dir: str = None,
     skip_train_test_exp: bool = False,
     is_speedy_splat: bool = False,
-    even_only: bool = False
+    even_only: bool = False,
+    use_bundle: bool = True
 ):
     """
     主测试函数
@@ -393,7 +523,8 @@ def test_fps_from_lookat(
         skip_train_test_exp: 是否跳过train_test_exp参数设置
     """
     print("开始3DGS FPS测试")
-    print(f"相机轨迹文件: {lookat_path}")
+    print(f"相机轨迹文件: {camera_file}")
+    print(f"使用格式: {'Bundle (.out)' if use_bundle else 'Lookat (.lookat)'}")
     print(f"模型路径: {model_path}")
     print(f"渲染分辨率: {width}x{height}")
     print(f"每视角渲染帧数: {n_frames}")
@@ -416,7 +547,10 @@ def test_fps_from_lookat(
     
     # 1. 解析相机列表
     print("\n1. 解析相机轨迹文件...")
-    views = parse_lookat_file(lookat_path)
+    if use_bundle:
+        views = parse_bundle_file(camera_file)
+    else:
+        views = parse_lookat_file(camera_file)
     
     if max_views:
         views = views[:max_views]
@@ -444,7 +578,10 @@ def test_fps_from_lookat(
     for idx, view_params in tqdm(enumerate(views), total=len(views), desc="渲染进度", unit="视角"):
         try:
             # 创建相机
-            camera = create_camera_from_lookat(view_params, width, height, is_speedy_splat)
+            if use_bundle:
+                camera = create_camera_from_bundle(view_params, width, height, is_speedy_splat)
+            else:
+                camera = create_camera_from_lookat(view_params, width, height, is_speedy_splat)
             
             # 决定是否保存图片
             save_image = save_images and (idx % image_save_interval == 0)
@@ -479,8 +616,8 @@ def test_fps_from_lookat(
 def main():
     """命令行入口"""
     parser = argparse.ArgumentParser(description="3DGS FPS测试工具")
-    parser.add_argument("--lookat", default="viewer/data/TEST.lookat", 
-                       help="相机轨迹文件路径")
+    parser.add_argument("--camera-file", default="viewer/data/TEST.out", 
+                       help="相机轨迹文件路径 (.out 或 .lookat)")
     parser.add_argument("--model", default="eval/flowers", 
                        help="模型路径")
     parser.add_argument("--frames", type=int, default=100, 
@@ -507,11 +644,16 @@ def main():
                        help="使用speedy-splat模型的Camera构造函数")
     parser.add_argument("--even-only", action="store_true", 
                        help="只测试偶数索引的相机视角")
+    parser.add_argument("--use-lookat", action="store_true", 
+                       help="使用lookat格式而不是bundle格式")
     
     args = parser.parse_args()
     
-    test_fps_from_lookat(
-        lookat_path=args.lookat,
+    # 根据文件扩展名自动判断格式
+    use_bundle = not args.use_lookat and args.camera_file.endswith('.out')
+    
+    test_fps_from_camera_file(
+        camera_file=args.camera_file,
         model_path=args.model,
         n_frames=args.frames,
         output_csv=args.output,
@@ -524,7 +666,8 @@ def main():
         output_dir=args.output_dir,
         skip_train_test_exp=args.skip_train_test_exp,
         is_speedy_splat=args.speedy_splat,
-        even_only=args.even_only
+        even_only=args.even_only,
+        use_bundle=use_bundle
     )
 
 
