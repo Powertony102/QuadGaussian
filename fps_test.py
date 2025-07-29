@@ -87,7 +87,7 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     target = np.array(params["target"])
     up = np.array(params["up"])
     
-    # 使用Viewer的相机矩阵构建方法
+    # 使用标准的lookAt矩阵构建方法
     # 计算相机坐标系
     forward = target - origin
     forward = forward / np.linalg.norm(forward)
@@ -98,23 +98,15 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     up = np.cross(right, forward)
     up = up / np.linalg.norm(up)
     
-    # 构建lookAt矩阵（世界到相机变换）
-    # 使用与Viewer相同的坐标系约定
+    # 构建标准的lookAt矩阵（世界到相机变换）
+    # 使用OpenGL约定：Z轴指向相机后方
     R = np.eye(3)
     R[:, 0] = right
-    R[:, 1] = up  # 保持原始up方向
-    R[:, 2] = -forward  # Z轴指向相机后方（OpenGL约定）
+    R[:, 1] = up
+    R[:, 2] = -forward  # Z轴指向相机后方
     
     # 计算平移向量
     T = -R @ origin
-    
-    # 应用Viewer的坐标系转换
-    # 注意：这里我们直接构建正确的矩阵，避免后续的转换
-    R_viewer = R.copy()
-    R_viewer[:, 1] = -R_viewer[:, 1]  # 应用Viewer的Y轴翻转
-    R_viewer[:, 2] = -R_viewer[:, 2]  # 应用Viewer的Z轴翻转
-    
-    R = R_viewer
     
     # 计算FOV
     fovy = params["fovy"]
