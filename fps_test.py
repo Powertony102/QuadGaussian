@@ -87,6 +87,7 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     target = np.array(params["target"])
     up = np.array(params["up"])
     
+    # 使用正确的lookAt矩阵构建方法
     # 计算相机坐标系
     forward = target - origin
     forward = forward / np.linalg.norm(forward)
@@ -97,13 +98,14 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     up = np.cross(right, forward)
     up = up / np.linalg.norm(up)
     
-    # 构建旋转矩阵
+    # 构建lookAt矩阵（世界到相机变换）
+    # 注意：这里构建的是世界到相机的变换矩阵
     R = np.eye(3)
     R[:, 0] = right
-    R[:, 1] = -up  # 注意Y轴方向
-    R[:, 2] = forward
+    R[:, 1] = up  # 不需要取负，保持正确的up方向
+    R[:, 2] = -forward  # Z轴指向相机后方（OpenGL约定）
     
-    # 平移向量
+    # 计算平移向量
     T = -R @ origin
     
     # 计算FOV
@@ -118,13 +120,15 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     if is_speedy_splat:
         # Speedy-splat模型的Camera构造函数
         camera = Camera(
+            resolution=(width, height),
             colmap_id=0,
             R=R,
             T=T,
             FoVx=fovx,
             FoVy=fovy,
+            depth_params=None,
             image=torch.from_numpy(dummy_image).float().permute(2, 0, 1) / 255.0,  # 转换为torch tensor并归一化
-            gt_alpha_mask=None,
+            invdepthmap=None,
             image_name="fps_test",
             uid=0,
             data_device="cuda"
