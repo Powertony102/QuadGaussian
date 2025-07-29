@@ -87,7 +87,7 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     target = np.array(params["target"])
     up = np.array(params["up"])
     
-    # 使用标准的lookAt矩阵构建方法
+    # 使用Blender兼容的lookAt矩阵构建方法
     # 计算相机坐标系
     forward = target - origin
     forward = forward / np.linalg.norm(forward)
@@ -98,12 +98,12 @@ def create_camera_from_lookat(params: Dict, width: int = 800, height: int = 600,
     up = np.cross(right, forward)
     up = up / np.linalg.norm(up)
     
-    # 构建标准的lookAt矩阵（世界到相机变换）
-    # 使用OpenGL约定：Z轴指向相机后方
+    # 构建Blender兼容的lookAt矩阵（世界到相机变换）
+    # Blender约定：Z轴指向相机前方，Y轴向上
     R = np.eye(3)
     R[:, 0] = right
     R[:, 1] = up
-    R[:, 2] = -forward  # Z轴指向相机后方
+    R[:, 2] = forward  # Z轴指向相机前方（Blender约定）
     
     # 计算平移向量
     T = -R @ origin
