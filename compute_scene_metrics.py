@@ -157,7 +157,18 @@ def compute_scene_metrics(model_path, name, iteration, views, scene, renderFunc,
 def run(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_train : bool, skip_test : bool, suffix : str, kernel_times : bool, no_kernel : bool):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
-        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
+        
+        # 根据 resolution 参数动态设置 resolution_scales
+        if dataset.resolution in [1, 2, 4, 8]:
+            # 如果 resolution 是 1,2,4,8，则使用对应的 scale
+            resolution_scales = [1.0 / dataset.resolution]
+        else:
+            # 否则使用默认的 scale=1.0
+            resolution_scales = [1.0]
+        
+        print(f"Using resolution scales: {resolution_scales} (resolution={dataset.resolution})")
+        
+        scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False, resolution_scales=resolution_scales)
 
         bg_color = [1,1,1] if dataset.white_background else [0, 0, 0]
         background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
