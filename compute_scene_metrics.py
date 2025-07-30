@@ -67,7 +67,7 @@ def process_kernel_times(model_path, name, iteration, views, scene, renderFunc, 
         for k_t in kernel_times:
             writer.writerow(k_t)
 
-def scene_metrics(iteration, name, cameras, scene, renderFunc, renderArgs):
+def scene_metrics(iteration, name, cameras, scene, renderFunc, renderArgs, use_torch_event=False):
     l1_test = 0.0
     psnr_test = 0.0
     ssim_test = 0.0
@@ -81,16 +81,34 @@ def scene_metrics(iteration, name, cameras, scene, renderFunc, renderArgs):
         render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
 
     for viewpoint in cameras:
-        render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
+        if use_torch_event:
+            # 使用 torch.event 计时
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+            
+            start_event.record()
+            render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
+            end_event.record()
+            
+            # 等待GPU操作完成
+            torch.cuda.synchronize()
+            
+            # 计算时间差（毫秒）
+            render_time = start_event.elapsed_time(end_event)
+            render_time_test += render_time
+        else:
+            # 使用原有的 kernel_times
+            render_pkg = renderFunc(viewpoint, scene.gaussians, *renderArgs)
+            kernel_times = render_pkg["kernel_times"]
+            render_time_test += kernel_times[-1].item()
+        
         image = torch.clamp(render_pkg["render"], 0.0, 1.0)
         gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
-        kernel_times = render_pkg["kernel_times"]
 
         l1_test += l1_loss(image, gt_image).mean().double()
         psnr_test += psnr(image, gt_image).mean().double()
         ssim_test += ssim(image, gt_image).mean().double()
         lpips_test += lpips(image, gt_image, net_type='vgg').mean().double()
-        render_time_test += kernel_times[-1].item()
 
         pbar.update(1)
 
@@ -116,13 +134,13 @@ def scene_metrics(iteration, name, cameras, scene, renderFunc, renderArgs):
     return l1_test, psnr_test, ssim_test, lpips_test, fps_test
 
 
-def compute_scene_metrics(model_path, name, iteration, views, scene, renderFunc, renderArgs):
+def compute_scene_metrics(model_path, name, iteration, views, scene, renderFunc, renderArgs, use_torch_event=False):
 
     output_path = os.path.join(model_path, name, "ours_{}".format(iteration))
     makedirs(output_path, exist_ok=True)
 
     metrics_pkg = scene_metrics(iteration, name, views, scene,
-                                renderFunc, renderArgs)
+                                renderFunc, renderArgs, use_torch_event)
     l1, psnr, ssim, lpips, fps = metrics_pkg
     l1 = l1.item() if isinstance(l1, torch.Tensor) else l1
     psnr = psnr.item() if isinstance(psnr, torch.Tensor) else psnr
@@ -136,7 +154,7 @@ def compute_scene_metrics(model_path, name, iteration, views, scene, renderFunc,
         writer.writerow([l1, psnr, ssim, lpips, fps])
 
 
-def run(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_train : bool, skip_test : bool, suffix : str, kernel_times : bool):
+def run(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_train : bool, skip_test : bool, suffix : str, kernel_times : bool, no_kernel : bool):
     with torch.no_grad():
         gaussians = GaussianModel(dataset.sh_degree)
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
@@ -147,10 +165,10 @@ def run(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_
         metrics_func = process_kernel_times if kernel_times else compute_scene_metrics
 
         if not skip_train:
-             metrics_func(dataset.model_path, f"train{suffix}", scene.loaded_iter, scene.getTrainCameras(), scene, render, (pipeline, background))
+             metrics_func(dataset.model_path, f"train{suffix}", scene.loaded_iter, scene.getTrainCameras(), scene, render, (pipeline, background), no_kernel)
 
         if not skip_test:
-             metrics_func(dataset.model_path, f"test{suffix}", scene.loaded_iter, scene.getTestCameras(), scene, render, (pipeline, background))
+             metrics_func(dataset.model_path, f"test{suffix}", scene.loaded_iter, scene.getTestCameras(), scene, render, (pipeline, background), no_kernel)
 
 if __name__ == "__main__":
     # Set up command line argument parser
@@ -162,6 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_test", action="store_true")
     parser.add_argument("--suffix", type=str, default="")
     parser.add_argument("--kernel_times", action="store_true")
+    parser.add_argument("--no-kernel", action="store_true", help="使用 torch.event 计算 FPS 而不是 kernel_times")
     parser.add_argument("--quiet", action="store_true")
     args = get_combined_args(parser)
     print("Rendering " + args.model_path)
@@ -171,4 +190,4 @@ if __name__ == "__main__":
     if args.suffix:
         args.suffix = f"_{args.suffix}"
 
-    run(model.extract(args), args.iteration, pipeline.extract(args), args.skip_train, args.skip_test, args.suffix, args.kernel_times)
+    run(model.extract(args), args.iteration, pipeline.extract(args), args.skip_train, args.skip_test, args.suffix, args.kernel_times, args.no_kernel)
