@@ -32,7 +32,8 @@ def get_all_scenes():
     return all_scenes
 
 def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, skip_test=False, 
-                             kernel_times=False, suffix="", quiet=False, verbose=False, pbar=None):
+                             kernel_times=False, no_kernel=False, suffix="", quiet=False, verbose=False, pbar=None,
+                             images="images", resolution=-1):
     """
     运行 compute_scene_metrics.py 对指定模型路径计算指标
     
@@ -42,13 +43,18 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
         skip_train: 是否跳过训练集
         skip_test: 是否跳过测试集
         kernel_times: 是否计算内核时间
+        no_kernel: 是否使用 torch.event 计算 FPS
         suffix: 后缀
         quiet: 是否静默模式
+        images: 图片文件夹名称
+        resolution: 分辨率缩放因子
     """
     cmd = [
         "python", "compute_scene_metrics.py",
         "-m", model_path,
-        "--iteration", str(iteration)
+        "--iteration", str(iteration),
+        "-i", images,
+        "-r", str(resolution)
     ]
     
     if skip_train:
@@ -57,6 +63,8 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
         cmd.append("--skip_test")
     if kernel_times:
         cmd.append("--kernel_times")
+    if no_kernel:
+        cmd.append("--no-kernel")
     if suffix:
         cmd.extend(["--suffix", suffix])
     if quiet:
@@ -116,6 +124,7 @@ def main():
     parser.add_argument("--skip_train", action="store_true", default=True, help="跳过训练集（默认启用）")
     parser.add_argument("--skip_test", action="store_true", help="跳过测试集")
     parser.add_argument("--kernel_times", action="store_true", help="计算内核时间")
+    parser.add_argument("--no-kernel", action="store_true", help="使用 torch.event 计算 FPS 而不是 kernel_times")
     parser.add_argument("--suffix", type=str, default="", help="后缀")
     parser.add_argument("--quiet", action="store_true", help="静默模式")
     parser.add_argument("--verbose", action="store_true", help="显示详细输出")
@@ -124,6 +133,8 @@ def main():
     parser.add_argument("--scene_types", nargs="+", 
                        choices=["mipnerf360_outdoor", "mipnerf360_indoor", "tanks_and_temples", "deep_blending"],
                        help="指定要处理的场景类型（可选）")
+    parser.add_argument("-i", "--images", type=str, default="images", help="图片文件夹名称")
+    parser.add_argument("-r", "--resolution", type=int, default=-1, help="分辨率缩放因子")
     
     args = parser.parse_args()
     
@@ -146,7 +157,9 @@ def main():
     print(f"🎯 将处理以下场景的测试集: {target_scenes}")
     print(f"📁 输出路径: {args.output_path}")
     print(f"🔄 迭代次数: {args.iteration}")
-    print(f"⚙️  参数: skip_train={args.skip_train}, skip_test={args.skip_test}, kernel_times={args.kernel_times}")
+    print(f"🖼️  图片文件夹: {args.images}")
+    print(f"📏 分辨率缩放: {args.resolution}")
+    print(f"⚙️  参数: skip_train={args.skip_train}, skip_test={args.skip_test}, kernel_times={args.kernel_times}, no_kernel={args.no_kernel}")
     
     # 检查输出路径是否存在
     output_path = Path(args.output_path)
@@ -184,10 +197,13 @@ def main():
                 skip_train=args.skip_train,
                 skip_test=args.skip_test,
                 kernel_times=args.kernel_times,
+                no_kernel=args.no_kernel,
                 suffix=args.suffix,
                 quiet=args.quiet or not args.verbose,
                 verbose=args.verbose or args.show_progress,
-                pbar=pbar if args.show_progress else None
+                pbar=pbar if args.show_progress else None,
+                images=args.images,
+                resolution=args.resolution
             )
             
             if success:
