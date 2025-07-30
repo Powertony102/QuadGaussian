@@ -166,7 +166,10 @@ def run(dataset : ModelParams, iteration : int, pipeline : PipelineParams, skip_
             # 否则使用默认的 scale=1.0
             resolution_scales = [1.0]
         
-        print(f"Using resolution scales: {resolution_scales} (resolution={dataset.resolution})")
+        # 强制输出调试信息，不受 quiet 参数影响
+        print(f"\n[DEBUG] Resolution parameter: {dataset.resolution}")
+        print(f"[DEBUG] Using resolution scales: {resolution_scales}")
+        print(f"[DEBUG] Images folder: {dataset.images}")
         
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False, resolution_scales=resolution_scales)
 

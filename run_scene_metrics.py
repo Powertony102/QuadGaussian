@@ -46,6 +46,7 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
         no_kernel: 是否使用 torch.event 计算 FPS
         suffix: 后缀
         quiet: 是否静默模式
+        verbose: 是否详细模式
         images: 图片文件夹名称
         resolution: 分辨率缩放因子
     """
@@ -67,7 +68,8 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
         cmd.append("--no-kernel")
     if suffix:
         cmd.extend(["--suffix", suffix])
-    if quiet:
+    # 只有在非详细模式且明确要求静默时才添加 --quiet
+    if quiet and not verbose and not pbar:
         cmd.append("--quiet")
     
     if verbose:
@@ -98,6 +100,9 @@ def run_compute_scene_metrics(model_path, iteration=30000, skip_train=False, ski
                         pbar.set_postfix_str(f"内核时间计算: {line}", refresh=True)
                     elif "Processing" in line:
                         pbar.set_postfix_str(f"处理中: {line}", refresh=True)
+                    elif "[DEBUG]" in line:
+                        # 显示调试信息
+                        print(f"  {line}")
                     
                     if verbose:
                         print(f"  {line}")
