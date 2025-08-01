@@ -1,0 +1,61 @@
+{
+  "scenes": {
+    "bicycle": {
+      "crop_params": {
+        "00006": {
+          "x": 540,
+          "y": 445,
+          "w": 190,
+          "h": 130,
+          "zoom": 2.5
+        }
+      },
+      "methods": {
+        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/bicycle/test/ours_30000/gt/{frame_id}.png",
+        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_bicycle_{frame_id}.png",
+        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/bicycle/test/ours_30000/renders/{frame_id}.png",
+        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/bicycle/test/ours_30000/renders/{frame_id}.png",
+        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/bicycle/test/ours_30000/renders/{frame_id}.png"
+      }
+    },
+    "playroom": {
+      "crop_params": {
+        "00023": {
+          "x": 640,
+          "y": 50,
+          "w": 200,
+          "h": 100,
+          "zoom": 2.5
+        }
+      },
+      "methods": {
+        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/playroom/test/ours_30000/gt/{frame_id}.png",
+        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_playroom_{frame_id}.png",
+        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/playroom/test/ours_30000/renders/{frame_id}.png",
+        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/playroom/test/ours_30000/renders/{frame_id}.png",
+        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/playroom/test/ours_30000/renders/{frame_id}.png"
+      }
+    },
+    "truck": {
+      "crop_params": {
+        "00023": {
+          "x": 290,
+          "y": 0,
+          "w": 200,
+          "h": 100,
+          "zoom": 2.5
+        }
+      },
+      "methods": {
+        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/truck/test/ours_30000/gt/{frame_id}.png",
+        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_truck_{frame_id}.png",
+        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/truck/test/ours_30000/renders/{frame_id}.png",
+        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/truck/test/ours_30000/renders/{frame_id}.png",
+        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/truck/test/ours_30000/renders/{frame_id}.png"
+      }
+    }
+  },
+  "output_dir": "/home/jovyan/work/gs_07/picture/processed",
+  "draw_rectangles": true,
+  "margin": 10
+} 
