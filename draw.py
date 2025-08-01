@@ -222,7 +222,12 @@ class ImageProcessor:
         if scenes is None:
             scenes = list(self.config["scenes"].keys())
         if methods is None:
-            methods = ["gt", "speedy", "adr", "3dgs", "ours"]
+            # 从配置中获取所有可用的方法
+            methods = []
+            for scene in scenes:
+                if scene in self.config["scenes"]:
+                    methods.extend(list(self.config["scenes"][scene]["methods"].keys()))
+            methods = list(set(methods))  # 去重
         if frame_ids is None:
             frame_ids = []
             for scene in scenes:
@@ -236,6 +241,16 @@ class ImageProcessor:
             for method in methods:
                 for frame_id in frame_ids:
                     try:
+                        # 检查该场景是否支持该方法
+                        if scene not in self.config["scenes"] or method not in self.config["scenes"][scene]["methods"]:
+                            results["skipped"] += 1
+                            continue
+                            
+                        # 检查该场景是否支持该帧ID
+                        if frame_id not in self.config["scenes"][scene]["crop_params"]:
+                            results["skipped"] += 1
+                            continue
+                            
                         if self.process_scene_method(scene, method, frame_id):
                             results["success"] += 1
                         else:
@@ -244,7 +259,7 @@ class ImageProcessor:
                         logger.error(f'处理 {scene}/{method}/{frame_id} 时出错: {str(e)}')
                         results["failed"] += 1
         
-        logger.info(f'批量处理完成: 成功={results["success"]}, 失败={results["failed"]}')
+        logger.info(f'批量处理完成: 成功={results["success"]}, 失败={results["failed"]}, 跳过={results["skipped"]}')
         return results
     
     def create_config_template(self, output_path: str = "config_template.json"):
@@ -261,6 +276,16 @@ class ImageProcessor:
             print(f"    帧ID: {list(self.config['scenes'][scene]['crop_params'].keys())}")
             print(f"    方法: {list(self.config['scenes'][scene]['methods'].keys())}")
             print()
+        
+        print("使用示例:")
+        print("  1. 处理单个场景的单个方法:")
+        print("     python draw.py --scene bicycle --method gt --frame 00006")
+        print("  2. 批量处理所有场景的所有方法:")
+        print("     python draw.py --batch")
+        print("  3. 批量处理特定帧:")
+        print("     python draw.py --frame-list 00006,00023 --batch")
+        print("  4. 处理特定场景和方法:")
+        print("     python draw.py --scenes bicycle playroom --methods gt dash --batch")
 
 
 def main():
@@ -273,6 +298,7 @@ def main():
     parser.add_argument('--scenes', nargs='+', help='要处理的场景列表')
     parser.add_argument('--methods', nargs='+', help='要处理的方法列表')
     parser.add_argument('--frames', nargs='+', help='要处理的帧ID列表')
+    parser.add_argument('--frame-list', type=str, help='要处理的帧ID列表，用逗号分隔，如: 00006,00023,00033')
     parser.add_argument('--batch', action='store_true', help='批量处理模式')
     parser.add_argument('--create-config', type=str, help='创建配置文件模板')
     parser.add_argument('--list', action='store_true', help='列出所有可用选项')
@@ -324,14 +350,22 @@ def main():
             print("处理失败!")
         return
     
+    # 处理帧ID列表参数
+    frame_ids = args.frames
+    if args.frame_list:
+        frame_ids = [f.strip() for f in args.frame_list.split(',')]
+    
+    # 检查是否需要批量处理
+    needs_batch = (args.batch or args.scenes or args.methods or args.frames or args.frame_list)
+    
     # 批量处理
-    if args.batch:
+    if needs_batch:
         results = processor.batch_process(
             scenes=args.scenes,
             methods=args.methods,
-            frame_ids=args.frames
+            frame_ids=frame_ids
         )
-        print(f"批量处理完成: 成功={results['success']}, 失败={results['failed']}")
+        print(f"批量处理完成: 成功={results['success']}, 失败={results['failed']}, 跳过={results['skipped']}")
         return
     
     # 如果没有参数，显示帮助信息

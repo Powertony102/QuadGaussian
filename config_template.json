@@ -11,11 +11,9 @@
         }
       },
       "methods": {
-        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/bicycle/test/ours_30000/gt/{frame_id}.png",
-        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_bicycle_{frame_id}.png",
-        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/bicycle/test/ours_30000/renders/{frame_id}.png",
-        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/bicycle/test/ours_30000/renders/{frame_id}.png",
-        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/bicycle/test/ours_30000/renders/{frame_id}.png"
+        "gt": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/bicycle/test/ours_30000/gt/{frame_id}.png",
+        "dash": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval_dash/bicycle/test/ours_30000/renders/{frame_id}.png",
+        "dash_ours": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/bicycle/test/ours_30000/renders/{frame_id}.png"
       }
     },
     "playroom": {
@@ -29,11 +27,9 @@
         }
       },
       "methods": {
-        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/playroom/test/ours_30000/gt/{frame_id}.png",
-        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_playroom_{frame_id}.png",
-        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/playroom/test/ours_30000/renders/{frame_id}.png",
-        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/playroom/test/ours_30000/renders/{frame_id}.png",
-        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/playroom/test/ours_30000/renders/{frame_id}.png"
+        "gt": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/playroom/test/ours_30000/gt/{frame_id}.png",
+        "dash": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval_dash/playroom/test/ours_30000/renders/{frame_id}.png",
+        "dash_ours": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/playroom/test/ours_30000/renders/{frame_id}.png"
       }
     },
     "truck": {
@@ -47,15 +43,29 @@
         }
       },
       "methods": {
-        "gt": "/home/jovyan/work/gs_07/QuadGaussian/eval/truck/test/ours_30000/gt/{frame_id}.png",
-        "speedy": "/home/jovyan/work/gs_07/picture/OG/speedy_truck_{frame_id}.png",
-        "adr": "/home/jovyan/work/gs_07/adrgaussian/eval/truck/test/ours_30000/renders/{frame_id}.png",
-        "3dgs": "/home/jovyan/work/gs_07/orggs/gaussian-splatting/eval/truck/test/ours_30000/renders/{frame_id}.png",
-        "ours": "/home/jovyan/work/gs_07/QuadGaussian/eval/truck/test/ours_30000/renders/{frame_id}.png"
+        "gt": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/truck/test/ours_30000/gt/{frame_id}.png",
+        "dash": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval_dash/truck/test/ours_30000/renders/{frame_id}.png",
+        "dash_ours": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/truck/test/ours_30000/renders/{frame_id}.png"
+      }
+    },
+    "bonsai": {
+      "crop_params": {
+        "00023": {
+          "x": 580,
+          "y": 330,
+          "w": 280,
+          "h": 200,
+          "zoom": 2.5
+        }
+      },
+      "methods": {
+        "gt": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/bonsai/test/ours_30000/gt/{frame_id}.png",
+        "dash": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval_dash/bonsai/test/ours_30000/renders/{frame_id}.png",
+        "dash_ours": "/home/jovyan/work/gs_07/table2/DashGaussian-main/eval/bonsai/test/ours_30000/renders/{frame_id}.png"
       }
     }
   },
-  "output_dir": "/home/jovyan/work/gs_07/picture/processed",
+  "output_dir": "/home/jovyan/work/gs_07/table2/appendix/dash",
   "draw_rectangles": true,
   "margin": 10
 } 
